@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        /* output */
+        "target": "es2015",
+        "module": "es2015",
+        "moduleResolution": "bundler",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "importHelpers": true,
+        /* react */
+        "jsx": "react-jsx",
+        /* type safety */
+        "strict": true,
+        "exactOptionalPropertyTypes": true,
+        "verbatimModuleSyntax": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        /* libs */
+        "lib": [
+            "DOM",
+            "DOM.Iterable",
+            "ESNext"
+        ],
+        /* project refs / speed */
+        "composite": false,
+        "incremental": false,
+    }
+}
