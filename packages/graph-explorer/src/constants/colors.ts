@@ -50,15 +50,15 @@ export const DEFAULT_LIGHT_GRAPH_COLORS: GraphColorConfig = {
   node: {
     fill: "#3498db",
     border: {
-      default: "#e0e0e0",
-      hovered: "#6666ff",
-      selected: "#ff6b6b",
+      default: "#ffffff",
+      hovered: "#800020",
+      selected: "#ff9574",
     },
   },
   link: {
     fill: {
       default: "#848484",
-      hovered: "#6666ff",
+      hovered: "#800020",
     },
   },
   text: {
@@ -69,19 +69,19 @@ export const DEFAULT_LIGHT_GRAPH_COLORS: GraphColorConfig = {
 
 export const DEFAULT_DARK_GRAPH_COLORS: GraphColorConfig = {
   types,
-  background: "#121212",
+  background: "#2c2c2c",
   node: {
     fill: "#74b9ff",
     border: {
-      default: "#2d3436", // charcoal
-      hovered: "#a29bfe", // soft violet
-      selected: "#ff7675", // soft red
+      default: "#2c2c2c",
+      hovered: "#800020",
+      selected: "#ff9574",
     },
   },
   link: {
     fill: {
       default: "#848484",
-      hovered: "#6666ff",
+      hovered: "#800020",
     },
   },
   text: {

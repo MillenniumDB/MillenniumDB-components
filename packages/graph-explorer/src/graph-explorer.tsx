@@ -16,8 +16,10 @@ import { useResizeObserver } from "./hooks/use-resize-observer";
 import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "./types/graph";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
 import { type GraphColorConfig, DEFAULT_DARK_GRAPH_COLORS, DEFAULT_LIGHT_GRAPH_COLORS } from "./constants/colors";
-import { Toolbar } from "./components/toolbar/toolbar";
+import { Toolbar, type ToolId } from "./components/toolbar/toolbar";
 import clsx from "clsx";
+import { PointerIcon, RectangularSelectionIcon } from "./components/icons";
+import { RectangularSelection } from "./components/rectangular-selection/rectangular-selection";
 
 export type GraphColorsMode = "light" | "dark";
 
@@ -54,7 +56,12 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
       }
     }, [baseGraphColorsMode, graphColors]);
 
+    // Tools
+    const [activeToolId, setActiveToolId] = useState<ToolId>("move");
+
+    // Node interaction
     const [hoveredNodeId, setHoveredNodeId] = useState<NodeId | null>(null);
+    const [selectedNodeIds, setSelectedNodeIds] = useState<Set<NodeId>>(new Set());
 
     // Render nodes
     const handleNodeCanvasObject = useCallback(
@@ -65,6 +72,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
         ctx.save();
 
         const isHovered = id === hoveredNodeId;
+        const isSelected = selectedNodeIds.has(id);
 
         const fontSize = Math.max(GRAPH_DIMENSIONS.fontSize / globalScale, 1);
 
@@ -98,7 +106,9 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
         // Draw the border
         ctx.beginPath();
         ctx.arc(x, y, NODE_DIMENSIONS.radius, 0, 2 * Math.PI);
-        if (isHovered) {
+        if (isSelected) {
+          ctx.strokeStyle = computedGraphColors.node.border.selected;
+        } else if (isHovered) {
           ctx.strokeStyle = computedGraphColors.node.border.hovered;
         } else {
           ctx.strokeStyle = computedGraphColors.node.border.default;
@@ -129,7 +139,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
 
         ctx.restore();
       },
-      [hoveredNodeId, computedGraphColors]
+      [hoveredNodeId, selectedNodeIds, computedGraphColors]
     );
 
     // map LinkIds to their corresponding curvature
@@ -287,6 +297,95 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
       setHoveredNodeId(node?.id ?? null);
     }, []);
 
+    const handleNodeClick = useCallback(
+      (node: NodeObject<MDBGraphNode>, event: MouseEvent) => {
+        switch (activeToolId) {
+          case "move": {
+            if (event.altKey || event.ctrlKey || event.shiftKey) {
+              // modify current selection
+              setSelectedNodeIds((prev) => {
+                const { id } = node;
+                const next = new Set(prev);
+                if (next.has(id)) {
+                  next.delete(id);
+                } else {
+                  next.add(id);
+                }
+                return next;
+              });
+            } else {
+              // single selection
+              setSelectedNodeIds(new Set([node.id]));
+            }
+            break;
+          }
+          case "rectangular-selection": {
+            break;
+          }
+        }
+      },
+      [activeToolId]
+    );
+
+    const handleBackgroundClick = useCallback(() => {
+      switch (activeToolId) {
+        case "move": {
+          // clear selection
+          setSelectedNodeIds(new Set());
+          break;
+        }
+        case "rectangular-selection": {
+          break;
+        }
+      }
+    }, [activeToolId]);
+
+    // Node dragging
+    // const handleNodeDrag = useCallback(
+    //   (node: NodeObject<MDBGraphNode>, translate: { x: number; y: number }) => {
+    //     const { id } = node;
+    //     if (selectedNodeIds.has(id)) {
+    //       for (const selectedNodeId of selectedNodeIds) {
+    //         if (selectedNodeId === id) continue;
+
+    //         const selectedNode = graphAPI.getNode(id);
+    //         if (!selectedNode) continue;
+    //         if (!selectedNode.x || !selectedNode.y) continue;
+
+    //         selectedNode.fx = selectedNode.x + translate.x;
+    //         selectedNode.fy = selectedNode.y + translate.y;
+    //       }
+    //     }
+    //   },
+    //   [graphAPI.getNode, selectedNodeIds]
+    // );
+
+    const handleNodeDrag = (node: NodeObject<MDBGraphNode>, translate: { x: number; y: number }) => {
+      const { id } = node;
+      if (selectedNodeIds.has(id)) {
+        for (const selectedNodeId of selectedNodeIds) {
+          if (selectedNodeId === id) continue;
+
+          const selectedNode = graphAPI.getNode(selectedNodeId);
+          if (!selectedNode) continue;
+          if (!selectedNode.x || !selectedNode.y) continue;
+
+          selectedNode.fx = selectedNode.x + translate.x;
+          selectedNode.fy = selectedNode.y + translate.y;
+        }
+      }
+    };
+
+    const handleNodeDragEnd = useCallback(
+      (node: NodeObject<MDBGraphNode>) => {
+        if (!node.x || !node.y) return;
+        // fix node after drag
+        node.fx = node.x;
+        node.fy = node.y;
+      },
+      [selectedNodeIds]
+    );
+
     // Disable default center force
     useEffect(() => {
       fgRef.current?.d3Force("center", null);
@@ -312,9 +411,26 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           nodeVal={NODE_DIMENSIONS.area}
           nodeRelSize={NODE_DIMENSIONS.relSize}
           onNodeHover={handleNodeHover}
+          onNodeClick={handleNodeClick}
+          onBackgroundClick={handleBackgroundClick}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragEnd={handleNodeDragEnd}
         />
         {/* Widgets */}
-        <Toolbar />
+        <Toolbar
+          activeToolId={activeToolId}
+          tools={[
+            { id: "move", title: "Move tool", icon: PointerIcon, onClick: () => setActiveToolId("move") },
+            {
+              id: "rectangular-selection",
+              title: "Rectangle selection",
+              icon: RectangularSelectionIcon,
+              onClick: () => setActiveToolId("rectangular-selection"),
+            },
+          ]}
+          darkMode={baseGraphColorsMode === "dark"}
+        />
+        {/* <RectangularSelection /> */}
       </div>
     );
   }

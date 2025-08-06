@@ -1,4 +1,4 @@
-.toolbar {
+.root {
   display: flex;
   flex-direction: row;
   gap: 8px;
@@ -14,29 +14,8 @@
   transform: translateX(-50%);
 
   transition: opacity 200ms ease;
-  opacity: 0.5;
+  opacity: 0.3;
   &:hover {
     opacity: 1;
-  }
-}
-
-.toolbarButton {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  border: none;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.1s ease;
-
-  &:hover {
-    background-color: #f0f0f0;
-  }
-
-  &:active {
-    background-color: #e0e0e0;
   }
 }

@@ -1,33 +1,37 @@
 import classes from "./toolbar.module.css";
 
-import { useState } from "react";
+import { type ElementType } from "react";
+import { Paper } from "../paper/paper";
+import { ToolbarButton } from "./toolbar-button";
 
-type ToolbarButtonProps = {
+export type ToolId = "move" | "rectangular-selection";
+
+export type ToolDef = {
+  id: ToolId;
   title: string;
-  icon: string;
+  icon: ElementType;
+  onClick: () => void;
 };
 
-const ToolbarButton = ({ title, icon }: ToolbarButtonProps) => {
-  return (
-    <button className={classes.toolbarButton}>
-      <span className={classes.toolbarButtonIcon}>{icon}</span>
-    </button>
-  );
+export type ToolbarProps = {
+  darkMode?: boolean;
+  tools: ToolDef[];
+  activeToolId: ToolId;
 };
 
-export const Toolbar = () => {
-  const [activeTool, setActiveTool] = useState("move");
-
-  const tools = [
-    { id: "move", title: "Move tool", icon: "->" },
-    { id: "rectangle-selection", title: "Rectangle selection", icon: "[]" },
-  ];
-
+export const Toolbar = ({ darkMode = false, tools, activeToolId }: ToolbarProps) => {
   return (
-    <div className={classes.toolbar}>
-      {tools.map(({ id, title, icon }) => (
-        <ToolbarButton key={id} title={title} icon={icon} />
+    <Paper className={classes.root} darkMode={darkMode} withBorder radius="lg">
+      {tools.map(({ id, title, icon, onClick }) => (
+        <ToolbarButton
+          darkMode={darkMode}
+          key={id}
+          title={title}
+          icon={icon}
+          active={activeToolId === id}
+          onClick={onClick}
+        />
       ))}
-    </div>
+    </Paper>
   );
 };
