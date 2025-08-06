@@ -26,7 +26,7 @@ export type GraphAPI = {
  * Supports efficient updates via internal refs and exposes a stable graph snapshot.
  * Prefer the use of the api methods instead of modifying initialGraphData directly.
  */
-export function useGraphAPI({ initialGraphData = { nodes: [], links: [] } }: UseGraphAPIOptions): GraphAPI {
+export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI {
   const [graphData, setGraphData] = useState<MDBGraphData>({ nodes: [], links: [] });
 
   const nodeMap = useRef(new Map<NodeId, NodeObject<MDBGraphNode>>());
@@ -111,6 +111,8 @@ export function useGraphAPI({ initialGraphData = { nodes: [], links: [] } }: Use
 
   // changes on initialGraphData resets everything
   useEffect(() => {
+    if (!initialGraphData) return;
+
     clear();
     for (const node of initialGraphData.nodes) {
       addNode(node);
