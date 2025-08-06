@@ -7,4 +7,8 @@ export default defineConfig({
   target: "esnext",
   sourcemap: true,
   external: ["react", "react-dom"],
+  clean: true,
+  loader: {
+    ".css": "local-css", // This is the magic line
+  },
 });

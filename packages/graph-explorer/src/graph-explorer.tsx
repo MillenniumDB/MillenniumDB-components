@@ -1,3 +1,5 @@
+import classes from "./graph-explorer.module.css";
+
 import {
   forwardRef,
   useCallback,
@@ -14,6 +16,8 @@ import { useResizeObserver } from "./hooks/use-resize-observer";
 import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "./types/graph";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
 import { type GraphColorConfig, DEFAULT_DARK_GRAPH_COLORS, DEFAULT_LIGHT_GRAPH_COLORS } from "./constants/colors";
+import { Toolbar } from "./components/toolbar/toolbar";
+import clsx from "clsx";
 
 export type GraphColorsMode = "light" | "dark";
 
@@ -289,7 +293,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
     }, []);
 
     return (
-      <div ref={wrapperRef} className={className} style={style}>
+      <div ref={wrapperRef} className={clsx(classes.wrapper, className)} style={style}>
         <ForceGraph<MDBGraphNode, MDBGraphLink>
           ref={fgRef}
           backgroundColor={computedGraphColors.background}
@@ -309,6 +313,8 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           nodeRelSize={NODE_DIMENSIONS.relSize}
           onNodeHover={handleNodeHover}
         />
+        {/* Widgets */}
+        <Toolbar />
       </div>
     );
   }

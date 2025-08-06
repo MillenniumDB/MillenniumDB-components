@@ -1,0 +1,42 @@
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 8px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  align-items: center;
+
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  transition: opacity 200ms ease;
+  opacity: 0.5;
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.toolbarButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.1s ease;
+
+  &:hover {
+    background-color: #f0f0f0;
+  }
+
+  &:active {
+    background-color: #e0e0e0;
+  }
+}
