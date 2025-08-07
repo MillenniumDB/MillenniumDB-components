@@ -1,15 +1,12 @@
 .root {
   display: flex;
   flex-direction: row;
-  gap: 8px;
-  padding: 8px;
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-xs);
   align-items: center;
 
   position: absolute;
-  bottom: 16px;
+  bottom: var(--mantine-spacing-sm);
   left: 50%;
   transform: translateX(-50%);
 

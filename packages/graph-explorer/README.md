@@ -7,10 +7,20 @@ It provides a programmatic API (via ref) to interact with the graph (add/remove 
 ## Installation (pnpm)
 
 ```sh
+pnpm add @mantine/core
 pnpm add @millenniumdb/graph-explorer
 ```
 
 ## Usage
+
+Ensure you have Mantine's core styles imported in your app root:
+
+```tsx
+// _app.tsx or equivalent
+import '@mantine/core/styles.css';
+```
+
+Use component:
 
 ```typescript
 import { GraphExplorer } from "@millenniumdb/components";

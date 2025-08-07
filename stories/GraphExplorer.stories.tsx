@@ -2,6 +2,7 @@ import { Meta, StoryObj } from "@storybook/react-vite";
 import { GraphExplorer } from "../packages/graph-explorer/src/index";
 import React, { useRef } from "react";
 import { GraphAPI, useGraphAPI } from "../packages/graph-explorer/src/hooks/use-graph-api";
+import { Button, Container, Flex, useMantineColorScheme } from "@mantine/core";
 
 const meta = {
   title: "GraphExplorer",
@@ -43,18 +44,22 @@ export const Default: Story = {
     //     { id: "022", name: "022", source: "0", target: "2" },
     //   ],
     // },
-    style: {
-      flex: 1,
-    },
-
     baseGraphColorsMode: "dark",
   },
   render: (args) => {
     const graphApi = useRef<GraphAPI | null>(null);
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw" }}>
-        <button
+      <Container
+        fluid
+        p="md"
+        h="100vh"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Button
           onClick={() => {
             const gd = graphApi.current?.graphData;
             if (!gd) return;
@@ -76,10 +81,10 @@ export const Default: Story = {
             graphApi.current?.update();
           }}
         >
-          Test
-        </button>
-        <GraphExplorer ref={graphApi} {...args} />
-      </div>
+          {"Spawn node"}
+        </Button>
+        <GraphExplorer {...args} ref={graphApi} style={{ flex: 1 }} />
+      </Container>
     );
   },
 };
