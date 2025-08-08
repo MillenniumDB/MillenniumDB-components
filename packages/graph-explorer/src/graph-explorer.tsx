@@ -1,5 +1,5 @@
 import { Box } from "@mantine/core";
-import { IconMaximize, IconPointer, IconShape, IconTrash } from "@tabler/icons-react";
+import { IconArrowsMaximize, IconMaximize, IconPointer, IconShape, IconTrash } from "@tabler/icons-react";
 import {
   forwardRef,
   useCallback,
@@ -485,7 +485,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
             {
               id: "expand",
               title: "Expand",
-              icon: IconMaximize,
+              icon: IconArrowsMaximize,
               onClick: () => setActiveToolId("expand"),
             },
             {
