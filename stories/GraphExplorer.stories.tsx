@@ -1,8 +1,8 @@
 import { Meta, StoryObj } from "@storybook/react-vite";
 import { GraphExplorer } from "../packages/graph-explorer/src/index";
 import React, { useRef } from "react";
-import { GraphAPI, useGraphAPI } from "../packages/graph-explorer/src/hooks/use-graph-api";
-import { Button, Container, Flex, useMantineColorScheme } from "@mantine/core";
+import { GraphAPI } from "../packages/graph-explorer/src/hooks/use-graph-api";
+import { Button, Container } from "@mantine/core";
 
 const meta = {
   title: "GraphExplorer",
@@ -44,7 +44,6 @@ export const Default: Story = {
     //     { id: "022", name: "022", source: "0", target: "2" },
     //   ],
     // },
-    baseGraphColorsMode: "dark",
   },
   render: (args) => {
     const graphApi = useRef<GraphAPI | null>(null);

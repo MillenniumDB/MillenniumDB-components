@@ -11,11 +11,13 @@ export type GraphAPI = {
 
   getNode: (id: NodeId) => NodeObject<MDBGraphNode> | undefined;
   getLink: (id: LinkId) => LinkObject<MDBGraphNode, MDBGraphLink> | undefined;
-  getOutgoingNodes: (id: NodeId) => NodeObject<MDBGraphNode>[];
-  getIncomingNodes: (id: NodeId) => NodeObject<MDBGraphNode>[];
+  getOutgoingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
+  getIncomingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
 
   addLink: (link: LinkObject<MDBGraphNode, MDBGraphLink>) => void;
+  removeLink: (id: LinkId) => void;
   addNode: (node: MDBGraphNode) => void;
+  removeNode: (id: NodeId) => void;
   clear: () => void;
 
   update: () => void;
@@ -31,55 +33,10 @@ export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI 
 
   const nodeMap = useRef(new Map<NodeId, NodeObject<MDBGraphNode>>());
   const linkMap = useRef(new Map<LinkId, LinkObject<MDBGraphNode, MDBGraphLink>>());
-  const outgoingNodes = useRef(new Map<NodeId, Set<NodeId>>());
-  const incomingNodes = useRef(new Map<NodeId, Set<NodeId>>());
+  const outgoingLinks = useRef(new Map<NodeId, Set<LinkId>>());
+  const incomingLinks = useRef(new Map<NodeId, Set<LinkId>>());
 
   const hasChanges = useRef(false);
-
-  const addLink = useCallback((link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
-    const { id, source, target } = link;
-
-    if (linkMap.current.has(id)) return;
-
-    // cannot create link because either source or target does not exist
-    if (!nodeMap.current.has(source) || !nodeMap.current.has(target)) return;
-
-    linkMap.current.set(id, link);
-    outgoingNodes.current.get(source)?.add(target);
-    incomingNodes.current.get(target)?.add(source);
-
-    hasChanges.current = true;
-  }, []);
-
-  const addNode = useCallback((node: MDBGraphNode) => {
-    const { id } = node;
-    if (nodeMap.current.has(id)) return;
-
-    nodeMap.current.set(id, node);
-    outgoingNodes.current.set(id, new Set());
-    incomingNodes.current.set(id, new Set());
-
-    hasChanges.current = true;
-  }, []);
-
-  // clear all the data structures
-  const clear = useCallback(() => {
-    // no changes
-    if (
-      nodeMap.current.size === 0 &&
-      linkMap.current.size === 0 &&
-      outgoingNodes.current.size === 0 &&
-      incomingNodes.current.size === 0
-    )
-      return;
-
-    nodeMap.current.clear();
-    linkMap.current.clear();
-    outgoingNodes.current.clear();
-    incomingNodes.current.clear();
-
-    hasChanges.current = true;
-  }, []);
 
   // get a node by its id
   const getNode = useCallback((id: NodeId): NodeObject<MDBGraphNode> | undefined => {
@@ -91,12 +48,92 @@ export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI 
     return linkMap.current.get(id);
   }, []);
 
-  const getOutgoingNodes = useCallback((id: NodeId): NodeObject<MDBGraphNode>[] => {
-    return Array.from(outgoingNodes.current.get(id) || []).map((id) => nodeMap.current.get(id)!);
+  const addLink = useCallback((link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
+    const { id, source, target } = link;
+
+    if (linkMap.current.has(id)) return;
+
+    // cannot create link because either source or target does not exist
+    if (!nodeMap.current.has(source) || !nodeMap.current.has(target)) return;
+
+    linkMap.current.set(id, link);
+    outgoingLinks.current.get(source)?.add(id);
+    incomingLinks.current.get(target)?.add(id);
+
+    hasChanges.current = true;
   }, []);
 
-  const getIncomingNodes = useCallback((id: NodeId): NodeObject<MDBGraphNode>[] => {
-    return Array.from(incomingNodes.current.get(id) || []).map((id) => nodeMap.current.get(id)!);
+  const removeLink = useCallback((id: LinkId) => {
+    const link = linkMap.current.get(id);
+    if (!link) return;
+
+    const { source, target } = link;
+
+    // source/target can be either a string or converted to a LinkObject afterwards
+    const sourceId: string = typeof source === "string" ? source : (source as { id: string }).id;
+    const targetId: string = typeof target === "string" ? target : (target as { id: string }).id;
+
+    linkMap.current.delete(id);
+    outgoingLinks.current.get(sourceId)?.delete(id);
+    incomingLinks.current.get(targetId)?.delete(id);
+
+    hasChanges.current = true;
+  }, []);
+
+  const addNode = useCallback((node: MDBGraphNode) => {
+    const { id } = node;
+    if (nodeMap.current.has(id)) return;
+
+    nodeMap.current.set(id, node);
+    outgoingLinks.current.set(id, new Set());
+    incomingLinks.current.set(id, new Set());
+
+    hasChanges.current = true;
+  }, []);
+
+  const removeNode = useCallback((id: NodeId) => {
+    if (!nodeMap.current.has(id)) return;
+
+    nodeMap.current.delete(id);
+
+    for (const linkId of outgoingLinks.current.get(id)?.keys() ?? []) {
+      linkMap.current.delete(linkId);
+    }
+    for (const linkId of incomingLinks.current.get(id)?.keys() ?? []) {
+      linkMap.current.delete(linkId);
+    }
+
+    outgoingLinks.current.delete(id);
+    incomingLinks.current.delete(id);
+
+    hasChanges.current = true;
+  }, []);
+
+  // clear all the data structures
+  const clear = useCallback(() => {
+    // no changes
+    if (
+      nodeMap.current.size === 0 &&
+      linkMap.current.size === 0 &&
+      outgoingLinks.current.size === 0 &&
+      incomingLinks.current.size === 0
+    )
+      return;
+
+    nodeMap.current.clear();
+    linkMap.current.clear();
+    outgoingLinks.current.clear();
+    incomingLinks.current.clear();
+
+    hasChanges.current = true;
+  }, []);
+
+  const getOutgoingLinks = useCallback((id: NodeId): LinkObject<MDBGraphNode, MDBGraphLink>[] => {
+    return Array.from(outgoingLinks.current.get(id) || []).map((id) => linkMap.current.get(id)!);
+  }, []);
+
+  const getIncomingLinks = useCallback((id: NodeId): LinkObject<MDBGraphNode, MDBGraphLink>[] => {
+    return Array.from(incomingLinks.current.get(id) || []).map((id) => linkMap.current.get(id)!);
   }, []);
 
   // commits the updates to the graphData. Must be called at the end of a sequence of modifications
@@ -122,8 +159,6 @@ export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI 
       addLink(link);
     }
     update();
-
-    return () => clear();
   }, [initialGraphData]);
 
   return {
@@ -131,11 +166,13 @@ export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI 
 
     getNode,
     getLink,
-    getOutgoingNodes,
-    getIncomingNodes,
+    getOutgoingLinks,
+    getIncomingLinks,
 
     addLink,
+    removeLink,
     addNode,
+    removeNode,
     clear,
 
     update,

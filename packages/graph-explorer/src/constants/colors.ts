@@ -1,5 +1,4 @@
 export type GraphColorConfig = {
-  background: string;
   types: string[];
   node: {
     fill: string;
@@ -22,70 +21,36 @@ export type GraphColorConfig = {
 };
 
 const types = [
-  "#ff6b6b", // soft red
-  "#4ecdc4", // teal
-  "#ffe66d", // yellow
-  "#1a73e8", // blue
-  "#ffa94d", // orange
-  "#9b59b6", // purple
-  "#00cec9", // cyan
-  "#e84393", // magenta
-  "#b8e994", // lime
-  "#fab1a0", // pink
-  "#0984e3", // strong blue
-  "#dfe6e9", // light grey
-  "#6c5ce7", // violet
-  "#f6e58d", // light yellow
-  "#c44569", // maroon
-  "#55efc4", // mint
-  "#636e72", // dark grey
-  "#fdcb6e", // peach
-  "#2d3436", // charcoal
-  "#b2bec3", // silver grey
+  "#d9534f", // strong red
+  "#5bc0de", // sky blue
+  "#f0ad4e", // warm gold
+  "#5cb85c", // medium green
+  "#292b2c", // almost black
+  "#0275d8", // moderate blue
+  "#f7b500", // golden yellow
+  "#6f42c1", // medium purple
+  "#fd7e14", // orange
+  "#20c997", // teal
 ];
 
-export const DEFAULT_LIGHT_GRAPH_COLORS: GraphColorConfig = {
+export const DEFAULT_GRAPH_COLORS: GraphColorConfig = {
   types,
-  background: "#ffffff",
   node: {
-    fill: "#3498db",
+    fill: "#0275d8", // moderate blue
     border: {
-      default: "#ffffff",
-      hovered: "#800020",
-      selected: "#ff9574",
+      default: "#5bc0de",
+      hovered: "#f0ad4e",
+      selected: "#d9534f",
     },
   },
   link: {
     fill: {
-      default: "#848484",
-      hovered: "#800020",
+      default: "#808080",
+      hovered: "#6f42c1",
     },
   },
   text: {
-    background: "rgba(255,255,255,0.8)",
-    foreground: "#212121",
-  },
-};
-
-export const DEFAULT_DARK_GRAPH_COLORS: GraphColorConfig = {
-  types,
-  background: "#2c2c2c",
-  node: {
-    fill: "#74b9ff",
-    border: {
-      default: "#2c2c2c",
-      hovered: "#800020",
-      selected: "#ff9574",
-    },
-  },
-  link: {
-    fill: {
-      default: "#848484",
-      hovered: "#800020",
-    },
-  },
-  text: {
-    background: "rgba(0,0,0,0.6)",
-    foreground: "#f1f1f1",
+    background: "rgba(0,0,0, 0.8)",
+    foreground: "#ffffff",
   },
 };

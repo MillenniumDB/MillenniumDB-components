@@ -1,7 +1,5 @@
-import classes from "./graph-explorer.module.css";
-
 import { Box } from "@mantine/core";
-import { IconPointer, IconSelect } from "@tabler/icons-react";
+import { IconMaximize, IconPointer, IconShape, IconTrash } from "@tabler/icons-react";
 import {
   forwardRef,
   useCallback,
@@ -21,26 +19,27 @@ import {
   type SelectionBounds,
 } from "./components/rectangular-selection/rectangular-selection";
 import { Toolbar, type ToolId } from "./components/toolbar/toolbar";
-import { DEFAULT_DARK_GRAPH_COLORS, DEFAULT_LIGHT_GRAPH_COLORS, type GraphColorConfig } from "./constants/colors";
+import { DEFAULT_GRAPH_COLORS, type GraphColorConfig } from "./constants/colors";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
 import { useGraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
 import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "./types/graph";
 
-export type GraphColorsMode = "light" | "dark";
+export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
 export type GraphExplorerProps = {
   initialGraphData: MDBGraphData;
   style?: CSSProperties;
   className?: string;
-  baseGraphColorsMode?: GraphColorsMode;
   graphColors?: Partial<GraphColorConfig>;
+
+  onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 };
 
 export type GraphExplorerAPI = ReturnType<typeof useGraphAPI>;
 
 export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
-  ({ initialGraphData, style, className = "", baseGraphColorsMode, graphColors }, ref) => {
+  ({ initialGraphData, style, className = "", graphColors, onNodeExpand }, ref) => {
     // Graph state / api
     const graphAPI = useGraphAPI({ initialGraphData });
     useImperativeHandle(ref, () => graphAPI, [graphAPI]);
@@ -53,14 +52,10 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
     const fgRef = useRef<ForceGraphMethods<MDBGraphNode, MDBGraphLink>>(undefined);
 
     // Graph colors
-    const computedGraphColors = useMemo<GraphColorConfig>(() => {
-      switch (baseGraphColorsMode) {
-        case "dark":
-          return { ...DEFAULT_DARK_GRAPH_COLORS, ...graphColors };
-        default:
-          return { ...DEFAULT_LIGHT_GRAPH_COLORS, ...graphColors };
-      }
-    }, [baseGraphColorsMode, graphColors]);
+    const computedGraphColors = useMemo<GraphColorConfig>(
+      () => ({ ...DEFAULT_GRAPH_COLORS, ...graphColors }),
+      [graphColors]
+    );
 
     // Tools
     const [activeToolId, setActiveToolId] = useState<ToolId>("move");
@@ -226,10 +221,6 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
         const curvature = curvatureMap.get(id) ?? 0;
         const fontSize = Math.max(GRAPH_DIMENSIONS.fontSize / globalScale, 1);
 
-        // ctx.font = `${fontSize}px Sans-Serif`;
-        // const textWidth = ctx.measureText(name).width;
-        // const [bgWidth, bgHeight] = [textWidth, fontSize].map((n) => n + 0.5 * fontSize);
-
         // bezier midpoint
         let bx: number;
         let by: number;
@@ -333,6 +324,15 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
             }
             break;
           }
+          case "expand": {
+            onNodeExpand?.(node, event);
+            break;
+          }
+          case "remove": {
+            graphAPI.removeNode(node.id);
+            graphAPI.update();
+            break;
+          }
           case "rectangular-selection": {
             break;
           }
@@ -348,7 +348,8 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           setSelectedNodeIds(new Set());
           break;
         }
-        case "rectangular-selection": {
+        case "rectangular-selection":
+        case "expand": {
           break;
         }
       }
@@ -449,7 +450,6 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
       <Box ref={wrapperRef} pos="relative" className={className} style={style}>
         <ForceGraph<MDBGraphNode, MDBGraphLink>
           ref={fgRef}
-          backgroundColor={computedGraphColors.background}
           graphData={graphAPI.graphData}
           width={width}
           height={height}
@@ -469,6 +469,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           onBackgroundClick={handleBackgroundClick}
           onNodeDrag={handleNodeDrag}
           onNodeDragEnd={handleNodeDragEnd}
+          nodeLabel={""}
         />
         {/* Widgets */}
         <Toolbar
@@ -478,8 +479,20 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
             {
               id: "rectangular-selection",
               title: "Rectangle selection",
-              icon: IconSelect,
+              icon: IconShape,
               onClick: () => setActiveToolId("rectangular-selection"),
+            },
+            {
+              id: "expand",
+              title: "Expand",
+              icon: IconMaximize,
+              onClick: () => setActiveToolId("expand"),
+            },
+            {
+              id: "remove",
+              title: "Remove",
+              icon: IconTrash,
+              onClick: () => setActiveToolId("remove"),
             },
           ]}
         />

@@ -7,7 +7,7 @@ import React from "react";
 
 export const decorators = [
   (Story) => (
-    <MantineProvider theme={theme} defaultColorScheme="dark">
+    <MantineProvider theme={theme} forceColorScheme="dark">
       <Story />
     </MantineProvider>
   ),
