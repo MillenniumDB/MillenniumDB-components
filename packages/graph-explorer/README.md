@@ -7,7 +7,14 @@ It provides a programmatic API (via ref) to interact with the graph (add/remove 
 ## Installation (pnpm)
 
 ```sh
+# peer dependencies
 pnpm add @mantine/core
+pnpm add @tabler/icons-react
+pnpm add millenniumdb-driver
+```
+
+```sh
+# component
 pnpm add @millenniumdb/graph-explorer
 ```
 
@@ -16,7 +23,7 @@ pnpm add @millenniumdb/graph-explorer
 Ensure you have Mantine's core styles imported in your app root:
 
 ```tsx
-// _app.tsx or equivalent
+// in your app entry point
 import '@mantine/core/styles.css';
 ```
 
@@ -34,10 +41,8 @@ const data: MDBGraphData = {
 export default function App() {
   return (
     <GraphExplorer
-      width={800}
-      height={600}
       initialGraphData={data}
-      backgroundColor="#f0f0f0"
+      // other props...
     />
   );
 }
@@ -70,10 +75,8 @@ export default function App() {
   return (
     <GraphExplorer
       ref={graphAPI}
-      width={800}
-      height={600}
       initialGraphData={data}
-      backgroundColor="#f0f0f0"
+      // other props...
     />
   );
 }

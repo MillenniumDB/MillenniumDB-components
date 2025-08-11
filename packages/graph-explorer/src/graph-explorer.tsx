@@ -60,9 +60,13 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
     // Tools
     const [activeToolId, setActiveToolId] = useState<ToolId>("move");
 
-    // Node interaction
+    // Node/Link interaction
     const [hoveredNodeId, setHoveredNodeId] = useState<NodeId | null>(null);
+    const [hoveredLinkId, setHoveredLinkId] = useState<LinkId | null>(null);
+
     const [selectedNodeIds, setSelectedNodeIds] = useState<Set<NodeId>>(new Set());
+    const [selectedLinkIds, setSelectedLinkIds] = useState<Set<LinkId>>(new Set());
+
     const [rectangularSelection, setRectangularSelection] = useState<{
       isMultiSelect: boolean;
       nodeIds: Set<NodeId>;
@@ -201,6 +205,35 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
       [curvatureMap]
     );
 
+    // Link width/thickness
+    const handleLinkWidth = useCallback(
+      (link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
+        const { id } = link;
+        return id === hoveredLinkId ? 2 : 1;
+      },
+      [hoveredLinkId]
+    );
+
+    // Link color
+    const handleLinkColor = useCallback(
+      (link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
+        const { id } = link;
+
+        const isSelected = selectedLinkIds.has(id);
+        if (isSelected) {
+          return computedGraphColors.link.fill.selected;
+        }
+
+        const isHovered = id === hoveredLinkId;
+        if (isHovered) {
+          return computedGraphColors.link.fill.hovered;
+        }
+
+        return computedGraphColors.link.fill.default;
+      },
+      [selectedLinkIds, hoveredLinkId]
+    );
+
     // Render links
     const handleLinkCanvasObject = useCallback(
       (link: LinkObject<MDBGraphNode, MDBGraphLink>, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -230,7 +263,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           const curvature = curvatureMap.get(id) ?? 0;
 
           // loop parameters
-          const radius = 75 * Math.abs(curvature); // TODO: why 75
+          const radius = 75 * Math.abs(curvature); // TODO: why 75?
           const angle = curvature > 0 ? -Math.PI / 4 : (3 * Math.PI) / 4;
 
           // bezier control point (offset from node center)
@@ -302,6 +335,10 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
       setHoveredNodeId(node?.id ?? null);
     }, []);
 
+    const handleLinkHover = useCallback((link: LinkObject<MDBGraphNode, MDBGraphNode> | null) => {
+      setHoveredLinkId(link?.id ?? null);
+    }, []);
+
     const handleNodeClick = useCallback(
       (node: NodeObject<MDBGraphNode>, event: MouseEvent) => {
         switch (activeToolId) {
@@ -341,13 +378,51 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
       [activeToolId]
     );
 
+    const handleLinkClick = useCallback(
+      (link: LinkObject<MDBGraphNode, MDBGraphLink>, event: MouseEvent) => {
+        switch (activeToolId) {
+          case "move": {
+            if (event.altKey || event.ctrlKey || event.shiftKey) {
+              // modify current selection
+              setSelectedLinkIds((prev) => {
+                const { id } = link;
+                const next = new Set(prev);
+                if (next.has(id)) {
+                  next.delete(id);
+                } else {
+                  next.add(id);
+                }
+                return next;
+              });
+            } else {
+              // single selection
+              setSelectedLinkIds(new Set([link.id]));
+            }
+            break;
+          }
+          case "remove": {
+            graphAPI.removeLink(link.id);
+            graphAPI.update();
+            break;
+          }
+          case "expand":
+          case "rectangular-selection": {
+            break;
+          }
+        }
+      },
+      [activeToolId]
+    );
+
     const handleBackgroundClick = useCallback(() => {
       switch (activeToolId) {
         case "move": {
           // clear selection
           setSelectedNodeIds(new Set());
+          setSelectedLinkIds(new Set());
           break;
         }
+        case "remove":
         case "rectangular-selection":
         case "expand": {
           break;
@@ -457,19 +532,23 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           nodeCanvasObjectMode={() => "replace"}
           linkCanvasObject={handleLinkCanvasObject}
           linkCanvasObjectMode={() => "after"}
-          linkColor={() => computedGraphColors.link.fill.default}
-          linkDirectionalArrowColor={() => computedGraphColors.link.fill.default}
           linkDirectionalArrowLength={NODE_DIMENSIONS.radius}
           linkDirectionalArrowRelPos={1}
           linkCurvature={handleLinkCurvature}
+          linkWidth={handleLinkWidth}
+          linkColor={handleLinkColor}
+          linkDirectionalArrowColor={handleLinkColor}
           nodeVal={NODE_DIMENSIONS.area}
           nodeRelSize={NODE_DIMENSIONS.relSize}
           onNodeHover={handleNodeHover}
+          onLinkHover={handleLinkHover}
           onNodeClick={handleNodeClick}
+          onLinkClick={handleLinkClick}
           onBackgroundClick={handleBackgroundClick}
           onNodeDrag={handleNodeDrag}
           onNodeDragEnd={handleNodeDragEnd}
-          nodeLabel={""}
+          nodeLabel={() => ""}
+          linkLabel={() => ""}
         />
         {/* Widgets */}
         <Toolbar

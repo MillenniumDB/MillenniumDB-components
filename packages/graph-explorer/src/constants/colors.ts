@@ -12,6 +12,7 @@ export type GraphColorConfig = {
     fill: {
       default: string;
       hovered: string;
+      selected: string;
     };
   };
   text: {
@@ -46,7 +47,8 @@ export const DEFAULT_GRAPH_COLORS: GraphColorConfig = {
   link: {
     fill: {
       default: "#808080",
-      hovered: "#6f42c1",
+      hovered: "#f0ad4e",
+      selected: "#d9534f",
     },
   },
   text: {
