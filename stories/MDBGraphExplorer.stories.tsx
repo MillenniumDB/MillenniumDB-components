@@ -59,7 +59,7 @@ export const Default: Story = {
           flexDirection: "column",
         }}
       >
-        <MDBGraphExplorer {...args} style={{ flex: 1 }} />
+        <MDBGraphExplorer {...args} style={{ flex: 1, border: "1px solid red" }} />
       </Container>
     );
   },

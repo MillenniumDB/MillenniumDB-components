@@ -24,6 +24,8 @@ import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/
 import { useGraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
 import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "./types/graph";
+import { NodeSearch } from "./components/node-search/node-search";
+import { SideBar } from "./components/side-bar/side-bar";
 
 export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
@@ -34,12 +36,14 @@ export type GraphExplorerProps = {
   graphColors?: Partial<GraphColorConfig>;
 
   onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
+  fetchNodes?: (query: string) => Promise<MDBGraphNode[]>;
+  onSearchSelection?: (node: MDBGraphNode) => void;
 };
 
 export type GraphExplorerAPI = ReturnType<typeof useGraphAPI>;
 
 export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
-  ({ initialGraphData, style, className = "", graphColors, onNodeExpand }, ref) => {
+  ({ initialGraphData, style, className = "", graphColors, onNodeExpand, fetchNodes, onSearchSelection }, ref) => {
     // Graph state / api
     const graphAPI = useGraphAPI({ initialGraphData });
     useImperativeHandle(ref, () => graphAPI, [graphAPI]);
@@ -575,6 +579,9 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
             },
           ]}
         />
+
+        <NodeSearch fetchNodes={fetchNodes} onSearchSelection={onSearchSelection} />
+
         {activeToolId === "rectangular-selection" && (
           <RectangularSelection
             onSelectionStart={handleSelectionStart}
@@ -582,6 +589,8 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
             onSelectionEnd={handleSelectionEnd}
           />
         )}
+
+        <SideBar selectedNodeIds={selectedNodeIds} />
       </Box>
     );
   }

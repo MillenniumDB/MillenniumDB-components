@@ -1,0 +1,6 @@
+.root {
+  position: absolute;
+  left: var(--mantine-spacing-sm);
+  top: var(--mantine-spacing-sm);
+  width: 300px;
+}

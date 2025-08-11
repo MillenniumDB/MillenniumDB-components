@@ -16,5 +16,16 @@ export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) =>
     console.log("TODO: expand", node);
   }, []);
 
-  return <GraphExplorer ref={graphAPI} {...props} onNodeExpand={handleNodeExpand} />;
+  const handleSearchSelection = useCallback((node: MDBGraphNode) => {
+    console.log("TODO: search selection", node);
+  }, []);
+
+  return (
+    <GraphExplorer
+      ref={graphAPI}
+      {...props}
+      onNodeExpand={handleNodeExpand}
+      onSearchSelection={handleSearchSelection}
+    />
+  );
 };

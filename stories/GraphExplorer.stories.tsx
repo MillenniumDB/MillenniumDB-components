@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react-vite";
-import { GraphExplorer } from "../packages/graph-explorer/src/index";
+import { GraphExplorer, MDBGraphNode } from "../packages/graph-explorer/src/index";
 import React, { useRef } from "react";
 import { GraphAPI } from "../packages/graph-explorer/src/hooks/use-graph-api";
 import { Button, Container } from "@mantine/core";
@@ -46,7 +46,26 @@ export const Default: Story = {
     // },
   },
   render: (args) => {
-    const graphApi = useRef<GraphAPI | null>(null);
+    const graphAPI = useRef<GraphAPI | null>(null);
+
+    const handleFetchNodes = async (query: string): Promise<MDBGraphNode[]> => {
+      const gd = graphAPI.current?.graphData;
+      if (!gd) return [];
+      const numNodes = gd.nodes.length;
+
+      if (numNodes > 0) {
+        return [{ id: `${numNodes}`, name: `${numNodes}` }];
+      }
+
+      return [];
+    };
+
+    const handleSearchSelection = (node: MDBGraphNode) => {
+      if (graphAPI.current) {
+        graphAPI.current.addNode(node);
+        graphAPI.current.update();
+      }
+    };
 
     return (
       <Container
@@ -60,16 +79,16 @@ export const Default: Story = {
       >
         <Button
           onClick={() => {
-            const gd = graphApi.current?.graphData;
+            const gd = graphAPI.current?.graphData;
             if (!gd) return;
 
             const numNodes = gd.nodes.length;
 
-            graphApi.current?.addNode({ id: `${numNodes}`, name: `${numNodes}` });
+            graphAPI.current?.addNode({ id: `${numNodes}`, name: `${numNodes}` });
 
             if (numNodes > 0) {
               const target: string = `${Math.floor(Math.random() * numNodes)}`;
-              graphApi.current?.addLink({
+              graphAPI.current?.addLink({
                 id: `${numNodes}->${target}`,
                 name: `${numNodes}->${target}`,
                 source: `${numNodes}`,
@@ -77,12 +96,21 @@ export const Default: Story = {
               });
             }
 
-            graphApi.current?.update();
+            graphAPI.current?.update();
           }}
         >
           {"Spawn node"}
         </Button>
-        <GraphExplorer {...args} ref={graphApi} style={{ flex: 1 }} />
+        <GraphExplorer
+          {...args}
+          fetchNodes={handleFetchNodes}
+          onSearchSelection={handleSearchSelection}
+          ref={graphAPI}
+          style={{
+            flex: 1,
+            border: "1px solid red",
+          }}
+        />
       </Container>
     );
   },
