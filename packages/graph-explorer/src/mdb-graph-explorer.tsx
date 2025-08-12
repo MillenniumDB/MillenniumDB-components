@@ -1,26 +1,26 @@
 import { useCallback, useRef } from "react";
 import { GraphExplorer, type GraphExplorerProps } from "./graph-explorer";
 import { Driver, Result, Session } from "millenniumdb-driver";
-import type { GraphAPI } from "./hooks/use-graph-api";
+import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
-import type { MDBGraphNode } from "./types/graph";
+import type { MDBGraphData, MDBGraphNode } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
 import { getFetchNodesQuery } from "./utils/queries";
+import { Button } from "@mantine/core";
 
 export type MDBGraphExplorerProps = GraphExplorerProps & {
   driver: Driver;
+  initialGraphData: MDBGraphData;
 };
 
-export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) => {
-  const graphAPI = useRef<GraphAPI | null>(null);
+export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGraphExplorerProps) => {
+  const graphAPI = useGraphAPI({ initialGraphData });
 
   const fetchNodesSessionRef = useRef<Session | null>(null);
   const fetchNodesResultRef = useRef<Result | null>(null);
 
   const handleNodeExpand = useCallback(async (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean) => {
     try {
-      if (!graphAPI.current) return;
-
       const session = driver.session();
 
       if (outgoing) {
@@ -31,8 +31,8 @@ export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) =>
           const edgeId = record.get("edgeId");
           const type = record.get("type");
           const target = record.get("target");
-          graphAPI.current.addNode({ id: target.id, name: `${target}` });
-          graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
+          graphAPI.addNode({ id: target.id, name: `${target}` });
+          graphAPI.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
         }
       } else {
         const result = session.run(`MATCH (?source)-[?edgeId :?type]->(${node.id}) RETURN *`);
@@ -42,21 +42,19 @@ export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) =>
           const source = record.get("source");
           const edgeId = record.get("edgeId");
           const type = record.get("type");
-          graphAPI.current.addNode({ id: source.id, name: `${source}` });
-          graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: source.id, target: node.id });
+          graphAPI.addNode({ id: source.id, name: `${source}` });
+          graphAPI.addLink({ id: edgeId, name: `${type}`, source: source.id, target: node.id });
         }
       }
-      graphAPI.current.update();
+      graphAPI.update();
     } catch {
     } finally {
     }
   }, []);
 
   const handleSearchSelection = useCallback((node: MDBGraphNode) => {
-    if (!graphAPI.current) return;
-
-    graphAPI.current.addNode(node);
-    graphAPI.current.update();
+    graphAPI.addNode(node);
+    graphAPI.update();
   }, []);
 
   const handleFetchNodes = useCallback(async (query: string, properties: string[]): Promise<FetchNodesItem[]> => {
@@ -109,8 +107,8 @@ export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) =>
 
   return (
     <GraphExplorer
-      ref={graphAPI}
       {...props}
+      graphAPI={graphAPI}
       searchProperties={["name", "nombre"]}
       onNodeExpand={handleNodeExpand}
       fetchNodes={handleFetchNodes}

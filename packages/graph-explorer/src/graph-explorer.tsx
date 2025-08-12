@@ -30,7 +30,7 @@ import {
 import { Toolbar, type ToolId } from "./components/toolbar/toolbar";
 import { DEFAULT_GRAPH_COLORS, type GraphColorConfig } from "./constants/colors";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
-import { useGraphAPI } from "./hooks/use-graph-api";
+import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
 import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "./types/graph";
 import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-search";
@@ -40,7 +40,7 @@ import clsx from "clsx";
 export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
 export type GraphExplorerProps = {
-  initialGraphData: MDBGraphData;
+  graphAPI: GraphAPI;
   style?: CSSProperties;
   className?: string;
   graphColors?: Partial<GraphColorConfig>;
@@ -56,7 +56,7 @@ export type GraphExplorerAPI = ReturnType<typeof useGraphAPI>;
 export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
   (
     {
-      initialGraphData,
+      graphAPI,
       style,
       className = "",
       graphColors,
@@ -68,10 +68,6 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
     },
     ref
   ) => {
-    // Graph state / api
-    const graphAPI = useGraphAPI({ initialGraphData });
-    useImperativeHandle(ref, () => graphAPI, [graphAPI]);
-
     // Resize handle
     const wrapperRef = useRef<HTMLDivElement>(null);
     const { width, height } = useResizeObserver(wrapperRef);
