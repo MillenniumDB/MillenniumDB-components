@@ -17,20 +17,34 @@ export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) =>
   const fetchNodesSessionRef = useRef<Session | null>(null);
   const fetchNodesResultRef = useRef<Result | null>(null);
 
-  const handleNodeExpand = useCallback(async (node: NodeObject<MDBGraphNode>, event: MouseEvent) => {
+  const handleNodeExpand = useCallback(async (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean) => {
     try {
       if (!graphAPI.current) return;
 
       const session = driver.session();
-      const result = session.run(`MATCH (${node.id})-[?edgeId :?type]->(?target) RETURN *`);
-      await result.variables(); // TODO: unused, but necessary due to a driver bug
-      const records = await result.records();
-      for (const record of records) {
-        const edgeId = record.get("edgeId");
-        const type = record.get("type");
-        const target = record.get("target");
-        graphAPI.current.addNode({ id: target.id, name: `${target}` });
-        graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
+
+      if (outgoing) {
+        const result = session.run(`MATCH (${node.id})-[?edgeId :?type]->(?target) RETURN *`);
+        await result.variables(); // TODO: unused, but necessary due to a driver bug
+        const records = await result.records();
+        for (const record of records) {
+          const edgeId = record.get("edgeId");
+          const type = record.get("type");
+          const target = record.get("target");
+          graphAPI.current.addNode({ id: target.id, name: `${target}` });
+          graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
+        }
+      } else {
+        const result = session.run(`MATCH (?source)-[?edgeId :?type]->(${node.id}) RETURN *`);
+        await result.variables(); // TODO: unused, but necessary due to a driver bug
+        const records = await result.records();
+        for (const record of records) {
+          const source = record.get("source");
+          const edgeId = record.get("edgeId");
+          const type = record.get("type");
+          graphAPI.current.addNode({ id: source.id, name: `${source}` });
+          graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: source.id, target: node.id });
+        }
       }
       graphAPI.current.update();
     } catch {

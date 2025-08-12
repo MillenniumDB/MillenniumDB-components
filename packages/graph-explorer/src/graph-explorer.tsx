@@ -1,7 +1,14 @@
 import classes from "./graph-explorer.module.css";
 
 import { Box } from "@mantine/core";
-import { IconArrowsMaximize, IconMaximize, IconPointer, IconShape, IconTrash } from "@tabler/icons-react";
+import {
+  IconArrowsMaximize,
+  IconArrowsMinimize,
+  IconMaximize,
+  IconPointer,
+  IconShape,
+  IconTrash,
+} from "@tabler/icons-react";
 import {
   forwardRef,
   useCallback,
@@ -38,7 +45,7 @@ export type GraphExplorerProps = {
   className?: string;
   graphColors?: Partial<GraphColorConfig>;
   searchProperties?: string[];
-  onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
+  onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean) => void;
   fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
   onSearchSelection?: (node: MDBGraphNode) => void;
@@ -382,8 +389,12 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
             }
             break;
           }
-          case "expand": {
-            onNodeExpand?.(node, event);
+          case "expand-outgoing": {
+            onNodeExpand?.(node, event, true);
+            break;
+          }
+          case "expand-incoming": {
+            onNodeExpand?.(node, event, false);
             break;
           }
           case "remove": {
@@ -426,7 +437,8 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
             graphAPI.update();
             break;
           }
-          case "expand":
+          case "expand-outgoing":
+          case "expand-incoming":
           case "rectangular-selection": {
             break;
           }
@@ -445,7 +457,8 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
         }
         case "remove":
         case "rectangular-selection":
-        case "expand": {
+        case "expand-outgoing":
+        case "expand-incoming": {
           break;
         }
       }
@@ -583,10 +596,16 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
               onClick: () => setActiveToolId("rectangular-selection"),
             },
             {
-              id: "expand",
-              title: "Expand",
+              id: "expand-outgoing",
+              title: "Expand outgoing",
               icon: IconArrowsMaximize,
-              onClick: () => setActiveToolId("expand"),
+              onClick: () => setActiveToolId("expand-outgoing"),
+            },
+            {
+              id: "expand-incoming",
+              title: "Expand incoming",
+              icon: IconArrowsMinimize,
+              onClick: () => setActiveToolId("expand-incoming"),
             },
             {
               id: "remove",
