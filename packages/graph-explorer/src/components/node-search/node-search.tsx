@@ -1,28 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import classes from "./node-search.module.css";
 
-import { Box, CloseButton, Combobox, Input, InputBase, Loader, TextInput, useCombobox } from "@mantine/core";
+import { Box, CloseButton, Combobox, Loader, TextInput, Text, useCombobox } from "@mantine/core";
 import type { MDBGraphNode } from "../../types/graph";
 import { IconSearch } from "@tabler/icons-react";
 
-type NodeSearchProps = {
-  fetchNodes?: ((query: string) => Promise<MDBGraphNode[]>) | undefined;
+export type FetchNodesItem = {
+  category: string;
+  node: MDBGraphNode;
+  value: string;
+};
+
+export type NodeSearchProps = {
+  fetchNodes?: ((query: string, properties: string[]) => Promise<FetchNodesItem[]>) | undefined;
+  abortFetchNodes?: (() => Promise<void>) | undefined;
   onSearchSelection?: ((node: MDBGraphNode) => void) | undefined;
 };
 
-export const NodeSearch = ({ fetchNodes, onSearchSelection }: NodeSearchProps) => {
+const DEBOUNCE_QUERY_MS = 300;
+const properties = ["subject"]; // TODO: component prop
+
+export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes }: NodeSearchProps) => {
   const [loading, setLoading] = useState<boolean>(false);
-  const [data, setData] = useState<MDBGraphNode[]>([]);
+  const [data, setData] = useState<FetchNodesItem[]>([]);
   const [value, setValue] = useState<string>("");
+  const [debouncedQuery, setDebouncedQuery] = useState<string>("");
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
 
   const handleOptionsSubmit = (nodeId: string) => {
-    const selectedNode = data.find((node) => node.id === nodeId);
-    if (selectedNode) {
-      onSearchSelection?.(selectedNode);
+    const selectedItem = data.find((item) => item.node.id === nodeId);
+    if (selectedItem) {
+      onSearchSelection?.(selectedItem.node);
       setValue("");
       setData([]);
     }
@@ -30,17 +41,20 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection }: NodeSearchProps) =
   };
 
   const handleFetchNodes = async (query: string) => {
+    await abortFetchNodes?.();
+
+    if (!fetchNodes) return;
     if (query.length === 0) {
+      setLoading(false);
       setData([]);
-      setValue("");
       return;
     }
-    if (!fetchNodes) return;
 
     setLoading(true);
     try {
-      const nodes = await fetchNodes(query);
-      setData(nodes);
+      const result = await fetchNodes(query, properties);
+      console.log(result);
+      setData(result);
     } catch (error) {
       console.error(error);
     } finally {
@@ -51,7 +65,6 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection }: NodeSearchProps) =
   const handleTextInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.currentTarget.value;
     setValue(query);
-    handleFetchNodes(query);
     combobox.resetSelectedOption();
     combobox.openDropdown();
   };
@@ -77,10 +90,46 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection }: NodeSearchProps) =
     setData([]);
   };
 
-  const options = data.map((node: MDBGraphNode) => (
-    <Combobox.Option key={node.id} value={node.id}>
-      {node.name}
-    </Combobox.Option>
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedQuery(value);
+    }, DEBOUNCE_QUERY_MS);
+
+    return () => clearTimeout(timeout);
+  }, [value]);
+
+  useEffect(() => {
+    if (debouncedQuery.trim().length === 0) {
+      setData([]);
+    } else {
+      handleFetchNodes(debouncedQuery);
+    }
+  }, [debouncedQuery]);
+
+  const groupedData = data.reduce<Record<string, { node: MDBGraphNode; value: string }[]>>((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = [];
+    }
+    acc[item.category].push({
+      node: item.node,
+      value: item.value,
+    });
+    return acc;
+  }, {});
+
+  const options = Object.entries(groupedData).map(([category, items], categoryIdx) => (
+    <Combobox.Group key={categoryIdx} label={category}>
+      {items.map(({ node, value }, nodeIdx) => (
+        <Combobox.Option key={nodeIdx} value={node.id}>
+          <Text size="sm" fw={500}>
+            {value}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {node.id}
+          </Text>
+        </Combobox.Option>
+      ))}
+    </Combobox.Group>
   ));
 
   return (
@@ -110,7 +159,7 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection }: NodeSearchProps) =
           />
         </Combobox.Target>
 
-        <Combobox.Dropdown hidden={data === null}>
+        <Combobox.Dropdown hidden={data === null} className={classes.dropdown}>
           <Combobox.Options>
             {options}
             {data.length === 0 && <Combobox.Empty>No results found</Combobox.Empty>}

@@ -1,3 +1,5 @@
+import classes from "./graph-explorer.module.css";
+
 import { Box } from "@mantine/core";
 import { IconArrowsMaximize, IconMaximize, IconPointer, IconShape, IconTrash } from "@tabler/icons-react";
 import {
@@ -24,8 +26,9 @@ import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/
 import { useGraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
 import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "./types/graph";
-import { NodeSearch } from "./components/node-search/node-search";
+import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-search";
 import { SideBar } from "./components/side-bar/side-bar";
+import clsx from "clsx";
 
 export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
@@ -36,14 +39,27 @@ export type GraphExplorerProps = {
   graphColors?: Partial<GraphColorConfig>;
 
   onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
-  fetchNodes?: (query: string) => Promise<MDBGraphNode[]>;
+  fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
+  abortFetchNodes?: () => Promise<void>;
   onSearchSelection?: (node: MDBGraphNode) => void;
 };
 
 export type GraphExplorerAPI = ReturnType<typeof useGraphAPI>;
 
 export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
-  ({ initialGraphData, style, className = "", graphColors, onNodeExpand, fetchNodes, onSearchSelection }, ref) => {
+  (
+    {
+      initialGraphData,
+      style,
+      className = "",
+      graphColors,
+      onNodeExpand,
+      fetchNodes,
+      abortFetchNodes,
+      onSearchSelection,
+    },
+    ref
+  ) => {
     // Graph state / api
     const graphAPI = useGraphAPI({ initialGraphData });
     useImperativeHandle(ref, () => graphAPI, [graphAPI]);
@@ -526,7 +542,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
     }, []);
 
     return (
-      <Box ref={wrapperRef} pos="relative" className={className} style={style}>
+      <Box ref={wrapperRef} className={clsx(classes.root, className)} style={style}>
         <ForceGraph<MDBGraphNode, MDBGraphLink>
           ref={fgRef}
           graphData={graphAPI.graphData}
@@ -580,7 +596,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           ]}
         />
 
-        <NodeSearch fetchNodes={fetchNodes} onSearchSelection={onSearchSelection} />
+        <NodeSearch fetchNodes={fetchNodes} abortFetchNodes={abortFetchNodes} onSearchSelection={onSearchSelection} />
 
         {activeToolId === "rectangular-selection" && (
           <RectangularSelection

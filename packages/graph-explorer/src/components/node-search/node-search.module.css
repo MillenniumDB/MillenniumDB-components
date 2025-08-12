@@ -4,3 +4,8 @@
   top: var(--mantine-spacing-sm);
   width: 300px;
 }
+
+.dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+}
