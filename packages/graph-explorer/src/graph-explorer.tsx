@@ -37,7 +37,7 @@ export type GraphExplorerProps = {
   style?: CSSProperties;
   className?: string;
   graphColors?: Partial<GraphColorConfig>;
-
+  searchProperties?: string[];
   onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
   fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
@@ -53,6 +53,7 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
       style,
       className = "",
       graphColors,
+      searchProperties,
       onNodeExpand,
       fetchNodes,
       abortFetchNodes,
@@ -596,7 +597,12 @@ export const GraphExplorer = forwardRef<GraphExplorerAPI, GraphExplorerProps>(
           ]}
         />
 
-        <NodeSearch fetchNodes={fetchNodes} abortFetchNodes={abortFetchNodes} onSearchSelection={onSearchSelection} />
+        <NodeSearch
+          fetchNodes={fetchNodes}
+          abortFetchNodes={abortFetchNodes}
+          onSearchSelection={onSearchSelection}
+          searchProperties={searchProperties}
+        />
 
         {activeToolId === "rectangular-selection" && (
           <RectangularSelection

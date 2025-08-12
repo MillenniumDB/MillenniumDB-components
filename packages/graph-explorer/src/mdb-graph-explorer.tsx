@@ -59,11 +59,11 @@ export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) =>
           name: node.id,
           types: [], // TODO: implement this
         };
-        for (let i = 0; i < record.length; ++i) {
-          const value = record.get(1 + i);
-          if (record.get(1 + i) !== null) {
+        for (const property of properties) {
+          const value = record.get(`node.${property}`);
+          if (value !== null) {
             return {
-              category: properties[i],
+              category: property,
               node: graphNode,
               value,
             };
@@ -97,6 +97,7 @@ export const MDBGraphExplorer = ({ driver, ...props }: MDBGraphExplorerProps) =>
     <GraphExplorer
       ref={graphAPI}
       {...props}
+      searchProperties={["name", "nombre"]}
       onNodeExpand={handleNodeExpand}
       fetchNodes={handleFetchNodes}
       abortFetchNodes={handleAbortFetchNodes}

@@ -15,12 +15,12 @@ export type NodeSearchProps = {
   fetchNodes?: ((query: string, properties: string[]) => Promise<FetchNodesItem[]>) | undefined;
   abortFetchNodes?: (() => Promise<void>) | undefined;
   onSearchSelection?: ((node: MDBGraphNode) => void) | undefined;
+  searchProperties?: string[] | undefined;
 };
 
 const DEBOUNCE_QUERY_MS = 300;
-const properties = ["subject"]; // TODO: component prop
 
-export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes }: NodeSearchProps) => {
+export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, searchProperties }: NodeSearchProps) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<FetchNodesItem[]>([]);
   const [value, setValue] = useState<string>("");
@@ -52,7 +52,7 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes }: N
 
     setLoading(true);
     try {
-      const result = await fetchNodes(query, properties);
+      const result = await fetchNodes(query, searchProperties ?? []);
       console.log(result);
       setData(result);
     } catch (error) {
