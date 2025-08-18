@@ -1,8 +1,9 @@
 import { Meta, StoryObj } from "@storybook/react-vite";
 import { MDBGraphExplorer } from "../packages/graph-explorer/src/index";
+import type { GraphAPI } from "../packages/graph-explorer/src/hooks/use-graph-api";
 import { Container } from "@mantine/core";
 import { driver } from "millenniumdb-driver";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 const meta = {
   title: "MDBGraphExplorer",
@@ -49,6 +50,14 @@ export const Default: Story = {
     },
   },
   render: (args) => {
+    const graphAPI = useRef<GraphAPI | null>(null);
+
+    useEffect(() => {
+      if (graphAPI.current) {
+        console.log(graphAPI.current);
+      }
+    }, []);
+
     return (
       <Container
         fluid
@@ -59,7 +68,7 @@ export const Default: Story = {
           flexDirection: "column",
         }}
       >
-        <MDBGraphExplorer {...args} style={{ flex: 1, border: "1px solid red" }} />
+        <MDBGraphExplorer {...args} ref={graphAPI} style={{ flex: 1, border: "1px solid red" }} />
       </Container>
     );
   },

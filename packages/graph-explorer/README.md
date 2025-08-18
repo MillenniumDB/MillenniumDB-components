@@ -20,28 +20,35 @@ pnpm add @millenniumdb/graph-explorer
 
 ## Usage
 
-Ensure you have Mantine's core styles imported in your app root:
+Ensure you have Mantine's core and graph explorer styles imported in your app root:
 
 ```tsx
 // in your app entry point
 import '@mantine/core/styles.css';
+
+import '@millenniumdb/graph-explorer/styles.css'
 ```
 
-Use component:
+Use the component with MillenniumDB:
 
 ```typescript
-import { GraphExplorer } from "@millenniumdb/components";
-import type { MDBGraphData } from "@millenniumdb/components/types/graph";
+import { MDBGraphExplorer, type MDBGraphData } from "@millenniumdb/graph-explorer";
+import { driver } from "millenniumdb-driver";
+
 
 const data: MDBGraphData = {
   nodes: [{ id: "1", label: "Node 1" }, { id: "2", label: "Node 2" }],
   links: [{ source: "1", target: "2" }],
 };
 
+const driverInstance = driver("http://localhost:1234");
+
 export default function App() {
   return (
     <GraphExplorer
       initialGraphData={data}
+      driver={driverInstance}
+      style={{ width: 500, height: 500 }}
       // other props...
     />
   );
@@ -50,20 +57,24 @@ export default function App() {
 
 ## Props
 
-| Prop               | Type           | Description                                        |
-| ------------------ | -------------- | -------------------------------------------------- |
-| `width`            | `number`       | Width of the canvas in pixels                      |
-| `height`           | `number`       | Height of the canvas in pixels                     |
-| `initialGraphData` | `MDBGraphData` | Initial graph data (nodes and links)               |
-| `backgroundColor`  | `string?`      | Canvas background color (defaults to white `#fff`) |
+| Prop               | Type            | Description                                      |
+| ------------------ | --------------- | ------------------------------------------------ |
+| `ref`              | `GraphAPI`      | GraphAPI instance. Receives the initialGraphData |
+| `driver`           | `Driver`        | MillenniumDB driver instance                     |
+| `initialGraphData` | `MDBGraphData`  | Initial nodes and links                          |
+| `style`            | `CSSProperties` | Graph container style                            |
+| `className`        | `string`        | Graph container classes                          |
+| `searchProperties` | `string[]`      | Array of properties to look for while searching  |
 
 ## Graph API
 
-The component exposes a programmatic API via ref, using useGraphAPI, to interact with the graph. You can use this to add/remove nodes, update the graph, or reset the view.
+The component exposes a referemce tp a GraphAPI instance, which let you can interact with it programatically. For example, you can use this to add/remove nodes/links, update the graph, or reset the view.
 
 ```typescript
+import { MDBGraphExplorer, useGraphAPI, type GraphAPI } from "@millenniumdb/graph-explorer";
+
 export default function App() {
-  const graphAPI = useRef<GraphExplorerHandle>(null);
+  const graphAPI = useRef<GraphAPI | null>(null);
 
   useEffect(() => {
     const api = graphAPI.current;
@@ -73,11 +84,14 @@ export default function App() {
   }, []);
 
   return (
-    <GraphExplorer
+    <MDBGraphExplorer
       ref={graphAPI}
-      initialGraphData={data}
       // other props...
     />
   );
 }
 ```
+
+## The base GraphExplorer component
+
+We also expose the base graph explorer (which is not connected to a MillenniumDB driver) for debugging purposes. If a MDBGraphExplorer-like interface is provided, it will work as intended.
