@@ -2,10 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "../types/graph";
 import type { LinkObject, NodeObject } from "react-force-graph-2d";
 
-export type UseGraphAPIOptions = {
-  initialGraphData?: MDBGraphData;
-};
-
 export type GraphAPI = {
   graphData: MDBGraphData;
 
@@ -14,6 +10,7 @@ export type GraphAPI = {
   getOutgoingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
   getIncomingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
 
+  addGraphData: ({ newGraphData, replace }: { newGraphData: MDBGraphData; replace?: boolean }) => void;
   addLink: (link: LinkObject<MDBGraphNode, MDBGraphLink>) => void;
   removeLink: (id: LinkId) => void;
   addNode: (node: MDBGraphNode) => void;
@@ -26,9 +23,8 @@ export type GraphAPI = {
 /**
  * React hook managing a mutable graph data structure with nodes and links.
  * Supports efficient updates via internal refs and exposes a stable graph snapshot.
- * Prefer the use of the api methods instead of modifying initialGraphData directly.
  */
-export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI {
+export function useGraphAPI(): GraphAPI {
   const [graphData, setGraphData] = useState<MDBGraphData>({ nodes: [], links: [] });
 
   const nodeMap = useRef(new Map<NodeId, NodeObject<MDBGraphNode>>());
@@ -91,6 +87,21 @@ export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI 
     hasChanges.current = true;
   }, []);
 
+  // replaces or merge graphData
+  const addGraphData = ({ newGraphData, replace = false }: { newGraphData: MDBGraphData; replace?: boolean }) => {
+    if (replace) {
+      clear();
+    }
+
+    for (const node of newGraphData.nodes) {
+      addNode(node);
+    }
+
+    for (const link of newGraphData.links) {
+      addLink(link);
+    }
+  };
+
   const removeNode = useCallback((id: NodeId) => {
     if (!nodeMap.current.has(id)) return;
 
@@ -146,21 +157,6 @@ export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI 
     });
   }, []);
 
-  // changes on initialGraphData resets everything
-  useEffect(() => {
-    if (!initialGraphData) return;
-
-    clear();
-    for (const node of initialGraphData.nodes) {
-      addNode(node);
-    }
-
-    for (const link of initialGraphData.links) {
-      addLink(link);
-    }
-    update();
-  }, [initialGraphData]);
-
   return {
     graphData,
 
@@ -169,6 +165,7 @@ export function useGraphAPI({ initialGraphData }: UseGraphAPIOptions): GraphAPI 
     getOutgoingLinks,
     getIncomingLinks,
 
+    addGraphData,
     addLink,
     removeLink,
     addNode,

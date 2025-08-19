@@ -46,7 +46,7 @@ export const Default: Story = {
     // },
   },
   render: (args) => {
-    const graphAPI = useGraphAPI({});
+    const graphAPI = useRef<GraphAPI>(null);
 
     return (
       <Container
@@ -60,16 +60,18 @@ export const Default: Story = {
       >
         <Button
           onClick={() => {
-            const gd = graphAPI.graphData;
+            if (!graphAPI.current) return;
+
+            const gd = graphAPI.current.graphData;
             if (!gd) return;
 
             const numNodes = gd.nodes.length;
 
-            graphAPI.addNode({ id: `${numNodes}`, name: `${numNodes}` });
+            graphAPI.current.addNode({ id: `${numNodes}`, name: `${numNodes}` });
 
             if (numNodes > 0) {
               const target: string = `${Math.floor(Math.random() * numNodes)}`;
-              graphAPI.addLink({
+              graphAPI.current.addLink({
                 id: `${numNodes}->${target}`,
                 name: `${numNodes}->${target}`,
                 source: `${numNodes}`,
@@ -77,14 +79,14 @@ export const Default: Story = {
               });
             }
 
-            graphAPI.update();
+            graphAPI.current.update();
           }}
         >
           {"Spawn node"}
         </Button>
         <GraphExplorer
           {...args}
-          graphAPI={graphAPI}
+          ref={graphAPI}
           style={{
             flex: 1,
             border: "1px solid red",
