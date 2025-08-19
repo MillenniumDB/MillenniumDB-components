@@ -8,15 +8,16 @@ import type { FetchNodesItem } from "./components/node-search/node-search";
 import { getFetchNodesQuery } from "./utils/queries";
 import type { GraphColorConfig } from "./constants/colors";
 import { MDBSideBarContent } from "./components/side-bar/mdb-side-bar-content";
+import type { GraphSettings } from "./components/settings/settings";
 
 export type MDBGraphExplorerProps = {
   driver: Driver;
   initialGraphData?: MDBGraphData;
+  initialSettings?: GraphSettings;
   graphAPI: GraphAPI;
   style?: CSSProperties;
   className?: string;
   graphColors?: Partial<GraphColorConfig>;
-  searchProperties?: string[];
 };
 
 export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGraphExplorerProps) => {
@@ -126,7 +127,6 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
       {...props}
       ref={graphAPI}
       initialGraphData={initialGraphData}
-      searchProperties={["name", "nombre"]}
       onNodeExpand={handleNodeExpand}
       fetchNodes={handleFetchNodes}
       abortFetchNodes={handleAbortFetchNodes}

@@ -1,7 +1,7 @@
 import classes from "./toolbar.module.css";
 
 import { ActionIcon, Paper, Tooltip } from "@mantine/core";
-import type { Icon } from "@tabler/icons-react";
+import { type Icon } from "@tabler/icons-react";
 
 export type ToolId = "move" | "rectangular-selection" | "expand-outgoing" | "expand-incoming" | "remove";
 

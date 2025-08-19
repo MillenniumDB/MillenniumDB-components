@@ -149,12 +149,13 @@ export function useGraphAPI(): GraphAPI {
 
   // commits the updates to the graphData. Must be called at the end of a sequence of modifications
   const update = useCallback(() => {
-    if (!hasChanges) return;
+    if (!hasChanges.current) return;
 
     setGraphData({
       nodes: Array.from(nodeMap.current.values()),
       links: Array.from(linkMap.current.values()),
     });
+    hasChanges.current = false;
   }, []);
 
   return {

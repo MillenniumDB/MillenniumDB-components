@@ -64,33 +64,7 @@ export default function App() {
 | `initialGraphData` | `MDBGraphData`  | Initial nodes and links                          |
 | `style`            | `CSSProperties` | Graph container style                            |
 | `className`        | `string`        | Graph container classes                          |
-| `searchProperties` | `string[]`      | Array of properties to look for while searching  |
-
-## Graph API
-
-The component exposes a referemce tp a GraphAPI instance, which let you can interact with it programatically. For example, you can use this to add/remove nodes/links, update the graph, or reset the view.
-
-```typescript
-import { MDBGraphExplorer, useGraphAPI, type GraphAPI } from "@millenniumdb/graph-explorer";
-
-export default function App() {
-  const graphAPI = useRef<GraphAPI | null>(null);
-
-  useEffect(() => {
-    const api = graphAPI.current;
-    if (api) {
-        // use graphAPI...
-    }
-  }, []);
-
-  return (
-    <MDBGraphExplorer
-      ref={graphAPI}
-      // other props...
-    />
-  );
-}
-```
+| `initialSettings`  | `GraphSettings` | Graph explorer settings                          |
 
 ## The base GraphExplorer component
 

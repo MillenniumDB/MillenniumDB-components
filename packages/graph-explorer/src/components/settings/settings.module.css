@@ -1,0 +1,13 @@
+.root {
+  position: absolute;
+  left: 0;
+  left: var(--mantine-spacing-sm);
+  top: calc(36px + 2 * var(--mantine-spacing-sm));
+}
+
+.actionsContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--mantine-spacing-sm);
+}

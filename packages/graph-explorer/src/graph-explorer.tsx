@@ -30,6 +30,7 @@ import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from ".
 import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-search";
 import { SideBar } from "./components/side-bar/side-bar";
 import clsx from "clsx";
+import { Settings, type GraphSettings } from "./components/settings/settings";
 
 export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
@@ -37,8 +38,8 @@ export type GraphExplorerProps = {
   style?: CSSProperties;
   className?: string;
   graphColors?: Partial<GraphColorConfig>;
-  searchProperties?: string[];
   initialGraphData?: MDBGraphData | undefined;
+  initialSettings?: GraphSettings | undefined;
   onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean) => void;
   fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
@@ -52,8 +53,8 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       style,
       className = "",
       graphColors,
-      searchProperties,
       initialGraphData,
+      initialSettings = { searchProperties: [] },
       onNodeExpand,
       fetchNodes,
       abortFetchNodes,
@@ -78,6 +79,9 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       () => ({ ...DEFAULT_GRAPH_COLORS, ...graphColors }),
       [graphColors]
     );
+
+    // Graph settings
+    const [settings, setSettings] = useState<GraphSettings>(initialSettings);
 
     // Tools
     const [activeToolId, setActiveToolId] = useState<ToolId>("move");
@@ -625,8 +629,10 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           fetchNodes={fetchNodes}
           abortFetchNodes={abortFetchNodes}
           onSearchSelection={onSearchSelection}
-          searchProperties={searchProperties}
+          searchProperties={settings.searchProperties}
         />
+
+        <Settings initialSettings={settings} onSave={setSettings} />
 
         {activeToolId === "rectangular-selection" && (
           <RectangularSelection

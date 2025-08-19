@@ -10,7 +10,7 @@
   border-left: solid 1px var(--mantine-color-default-border);
   border-radius: 0;
   width: 250px;
-  z-index: var(--mantine-z-index-overlay);
+  z-index: calc(var(--mantine-z-index-modal) - 1);
 }
 
 .closeButtonContainer {
