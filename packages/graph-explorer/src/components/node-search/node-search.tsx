@@ -14,7 +14,7 @@ export type FetchNodesItem = {
 export type NodeSearchProps = {
   fetchNodes?: ((query: string, properties: string[]) => Promise<FetchNodesItem[]>) | undefined;
   abortFetchNodes?: (() => Promise<void>) | undefined;
-  onSearchSelection?: ((node: MDBGraphNode) => void) | undefined;
+  onSearchSelection?: ((node: MDBGraphNode, properties: string[]) => Promise<void>) | undefined;
   searchProperties?: string[] | undefined;
 };
 
@@ -33,7 +33,7 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, sea
   const handleOptionsSubmit = (nodeId: string) => {
     const selectedItem = data.find((item) => item.node.id === nodeId);
     if (selectedItem) {
-      onSearchSelection?.(selectedItem.node);
+      onSearchSelection?.(selectedItem.node, searchProperties ?? []);
       setValue("");
       setData([]);
     }

@@ -43,8 +43,12 @@ export type GraphExplorerProps = {
   onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean) => void;
   fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
-  onSearchSelection?: (node: MDBGraphNode) => void;
-  renderSideBarContent?: (selectedNodeIds: Set<NodeId>) => ReactNode;
+  onSearchSelection?: (node: MDBGraphNode, properties: string[]) => Promise<void>;
+  renderSideBarContent?: (
+    selectedNodeIds: Set<NodeId>,
+    getColorForLabel: (label: string) => string,
+    settings: GraphSettings
+  ) => ReactNode;
 };
 
 export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
@@ -80,6 +84,9 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       [graphColors]
     );
 
+    // Node label colors
+    const labelColorMap = useRef(new Map<string, string>());
+
     // Graph settings
     const [settings, setSettings] = useState<GraphSettings>(initialSettings);
 
@@ -100,6 +107,21 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       isMultiSelect: false,
       nodeIds: new Set(),
     });
+
+    // Map node labels to colors
+    const getColorForLabel = useCallback(
+      (label: string) => {
+        if (!labelColorMap.current.has(label)) {
+          const nextColor =
+            computedGraphColors.types[
+              labelColorMap.current.size % computedGraphColors.types.length
+            ];
+          labelColorMap.current.set(label, nextColor);
+        }
+        return labelColorMap.current.get(label)!;
+      },
+      [computedGraphColors],
+    );
 
     // Render nodes
     const handleNodeCanvasObject = useCallback(
@@ -128,8 +150,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           const sliceAngle = (2 * Math.PI) / numSlices;
 
           for (let i = 0; i < numSlices; ++i) {
-            const colorIdx = i % computedGraphColors.types.length;
-            const color = computedGraphColors.types[colorIdx];
+            const color = getColorForLabel(types![i]);
 
             const startAngle = sliceAngle * i;
             const endAngle = startAngle + sliceAngle;
@@ -147,13 +168,13 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         ctx.arc(x, y, NODE_DIMENSIONS.radius, 0, 2 * Math.PI);
         if (isSelected || isRectangularSelected) {
           ctx.strokeStyle = computedGraphColors.node.border.selected;
+          ctx.lineWidth = 1;
+          ctx.stroke();
         } else if (isHovered) {
           ctx.strokeStyle = computedGraphColors.node.border.hovered;
-        } else {
-          ctx.strokeStyle = computedGraphColors.node.border.default;
+          ctx.lineWidth = 1;
+          ctx.stroke();
         }
-        ctx.lineWidth = 1;
-        ctx.stroke();
 
         // Draw the name
         ctx.font = `${fontSize}px Sans-Serif`;
@@ -642,7 +663,12 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           />
         )}
 
-        <SideBar selectedNodeIds={selectedNodeIds} renderContent={renderSideBarContent} />
+        <SideBar
+          selectedNodeIds={selectedNodeIds}
+          getColorForLabel={getColorForLabel}
+          settings={settings}
+          renderContent={renderSideBarContent}
+        />
       </Box>
     );
   }

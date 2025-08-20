@@ -5,10 +5,11 @@ import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
-import { getFetchNodesQuery } from "./utils/queries";
+import { getDescribeQuery, getFetchNodesQuery } from "./utils/queries";
 import type { GraphColorConfig } from "./constants/colors";
 import { MDBSideBarContent } from "./components/side-bar/mdb-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
+import { getNodeName } from "./utils/data-format";
 
 export type MDBGraphExplorerProps = {
   driver: Driver;
@@ -59,11 +60,35 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     }
   }, []);
 
-  const handleSearchSelection = useCallback((node: MDBGraphNode) => {
+  const handleSearchSelection = useCallback(async (node: MDBGraphNode, properties: string[]) => {
     if (!graphAPI.current) return;
 
-    graphAPI.current.addNode(node);
-    graphAPI.current.update();
+    try {
+      const query = getDescribeQuery(node.id);
+      const session = driver.session();
+
+      const result = session.run(query);
+      await result.variables(); // TODO: unused, but necessary due to a driver bug
+      const records = await result.records();
+
+      if (records.length === 0) {
+        graphAPI.current.addNode(node);
+        return;
+      }
+
+      const record = records[0];
+      const labels = record.get("labels");
+      graphAPI.current.addNode({
+        ...node,
+        name: getNodeName(node.id, record.get("properties"), properties),
+        types: labels,
+      });
+    } catch (error) {
+      console.error(error);
+      graphAPI.current.addNode(node);
+    } finally {
+      graphAPI.current.update();
+    }
   }, []);
 
   const handleFetchNodes = useCallback(async (query: string, properties: string[]): Promise<FetchNodesItem[]> => {
@@ -115,8 +140,18 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     }
   }, []);
 
-  const handleRenderSidebarContent = (selectedNodeIds: Set<NodeId>) => {
-    return <MDBSideBarContent selectedNodeIds={selectedNodeIds} driver={driver} graphAPI={graphAPI} />;
+  const handleRenderSidebarContent = (
+    selectedNodeIds: Set<NodeId>,
+    getColorForLabel: (label: string) => string,
+    settings: GraphSettings
+  ) => {
+    return <MDBSideBarContent
+      selectedNodeIds={selectedNodeIds}
+      getColorForLabel={getColorForLabel}
+      settings={settings}
+      graphAPI={graphAPI}
+      driver={driver}
+    />;
   };
 
   return (
