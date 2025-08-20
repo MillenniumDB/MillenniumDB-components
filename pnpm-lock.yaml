@@ -11,15 +11,15 @@ importers:
       '@mantine/core':
         specifier: ^8.2.4
         version: 8.2.4(@mantine/hooks@8.2.5(react@19.1.1))(@types/react@19.1.9)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@millenniumdb/driver':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@storybook/preview-api':
         specifier: ^8.6.14
         version: 8.6.14(storybook@9.1.0(@testing-library/dom@10.4.1)(vite@7.0.6(@types/node@24.1.0)(sugarss@5.0.1(postcss@8.5.6))(terser@5.43.1)(yaml@2.8.0)))
       '@storybook/theming':
         specifier: ^8.6.14
         version: 8.6.14(storybook@9.1.0(@testing-library/dom@10.4.1)(vite@7.0.6(@types/node@24.1.0)(sugarss@5.0.1(postcss@8.5.6))(terser@5.43.1)(yaml@2.8.0)))
-      millenniumdb-driver:
-        specifier: ^1.7.10
-        version: 1.7.10
     devDependencies:
       '@storybook/manager-api':
         specifier: ^8.6.14
@@ -57,9 +57,9 @@ importers:
 
   packages/graph-explorer:
     dependencies:
-      '@mantine/hooks':
-        specifier: ^8.2.5
-        version: 8.2.5(react@19.1.1)
+      '@millenniumdb/driver':
+        specifier: ^1.0.1
+        version: 1.0.1
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -79,6 +79,9 @@ importers:
       '@mantine/core':
         specifier: ^8.2.4
         version: 8.2.4(@mantine/hooks@8.2.5(react@19.1.1))(@types/react@19.1.9)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@mantine/hooks':
+        specifier: ^8.2.5
+        version: 8.2.5(react@19.1.1)
       '@tabler/icons-react':
         specifier: ^3.34.1
         version: 3.34.1(react@19.1.1)
@@ -88,9 +91,6 @@ importers:
       css-loader:
         specifier: ^7.1.2
         version: 7.1.2(webpack@5.101.0(esbuild@0.25.8))
-      millenniumdb-driver:
-        specifier: ^1.7.10
-        version: 1.7.10
       style-loader:
         specifier: ^4.0.0
         version: 4.0.0(webpack@5.101.0(esbuild@0.25.8))
@@ -398,6 +398,9 @@ packages:
     resolution: {integrity: sha512-uIB7CN+isRZs81JrpcdOd/EmtReC3aMmOXCfuy55jlCLcWN374O5p2Ht+lC1FDk9+r5pFhw9iMzqMv5P0rbZAw==}
     peerDependencies:
       react: ^18.x || ^19.x
+
+  '@millenniumdb/driver@1.0.1':
+    resolution: {integrity: sha512-XqGYOp0+gbHL8EZBDaFTN01iNxxGKO/hk5nV8nwHYlUPKIoXdD5vFX+EauJqbwfGB00utT1o+YRyLc8MG67HLw==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -1284,9 +1287,6 @@ packages:
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
-
-  millenniumdb-driver@1.7.10:
-    resolution: {integrity: sha512-iFOcOI5nSNtrKjpxgEDNzKHw4Sgidos/RhmNoDwRKYTmGKGAx/whxBR6DgpNWWQnLh/d5Qu0loSfxboy/L4Ehg==}
 
   mime-db@1.52.0:
     resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
@@ -2224,6 +2224,15 @@ snapshots:
     dependencies:
       react: 19.1.1
 
+  '@millenniumdb/driver@1.0.1':
+    dependencies:
+      '@babel/runtime': 7.28.2
+      buffer: 6.0.3
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
@@ -3061,15 +3070,6 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.4
 
   merge-stream@2.0.0: {}
-
-  millenniumdb-driver@1.7.10:
-    dependencies:
-      '@babel/runtime': 7.28.2
-      buffer: 6.0.3
-      ws: 8.18.3
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   mime-db@1.52.0: {}
 

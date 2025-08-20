@@ -10,7 +10,7 @@ It provides a programmatic API (via ref) to interact with the graph (add/remove 
 # peer dependencies
 pnpm add @mantine/core
 pnpm add @tabler/icons-react
-pnpm add millenniumdb-driver
+pnpm add @millenniumdb/driver
 ```
 
 ```sh
@@ -33,7 +33,7 @@ Use the component with MillenniumDB:
 
 ```typescript
 import { MDBGraphExplorer, type MDBGraphData } from "@millenniumdb/graph-explorer";
-import { driver } from "millenniumdb-driver";
+import { driver } from "@millenniumdb/driver";
 
 
 const data: MDBGraphData = {

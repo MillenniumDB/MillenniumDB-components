@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react-vite";
 import { MDBGraphExplorer } from "../packages/graph-explorer/src/index";
 import { Container } from "@mantine/core";
-import { driver } from "millenniumdb-driver";
+import { driver } from "@millenniumdb/driver";
 import React from "react";
 
 const meta = {

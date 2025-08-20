@@ -1,7 +1,7 @@
-import type { Driver, Record as MDBRecord } from "millenniumdb-driver";
+import type { Driver } from "@millenniumdb/driver";
 import type { GraphAPI } from "../../hooks/use-graph-api";
 import type { NodeId } from "../../types/graph";
-import { Box, Loader, LoadingOverlay, Text } from "@mantine/core";
+import { Box, Loader, Text } from "@mantine/core";
 import { getDescribeQuery } from "../../utils/queries";
 import { useEffect, useState } from "react";
 
@@ -27,7 +27,6 @@ export const MDBSideBarContent = ({ selectedNodeIds, graphAPI, driver }: MDBSide
         const session = driver.session();
 
         const result = session.run(query);
-        await result.variables(); // TODO: unused, but necessary due to a driver bug
         const records = await result.records();
 
         setDescription(records.length > 0 ? records[0] : null);

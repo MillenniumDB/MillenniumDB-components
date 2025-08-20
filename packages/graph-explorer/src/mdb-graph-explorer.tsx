@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, type CSSProperties } from "react";
 import { GraphExplorer } from "./graph-explorer";
-import { Driver, Result, Session } from "millenniumdb-driver";
+import { Driver, Result, Session } from "@millenniumdb/driver";
 import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
@@ -34,7 +34,6 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
 
       if (outgoing) {
         const result = session.run(`MATCH (${node.id})-[?edgeId :?type]->(?target) RETURN *`);
-        await result.variables(); // TODO: unused, but necessary due to a driver bug
         const records = await result.records();
         for (const record of records) {
           const edgeId = record.get("edgeId");
@@ -45,7 +44,6 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
         }
       } else {
         const result = session.run(`MATCH (?source)-[?edgeId :?type]->(${node.id}) RETURN *`);
-        await result.variables(); // TODO: unused, but necessary due to a driver bug
         const records = await result.records();
         for (const record of records) {
           const source = record.get("source");
@@ -75,7 +73,6 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
       const fetchNodesQuery = getFetchNodesQuery(query, properties);
       fetchNodesSessionRef.current = driver.session();
       fetchNodesResultRef.current = fetchNodesSessionRef.current.run(fetchNodesQuery);
-      await fetchNodesResultRef.current.variables(); // TODO: unused, but necessary due to a driver bug
       const records = await fetchNodesResultRef.current.records();
       return records.map((record) => {
         const node = record.get("node");
