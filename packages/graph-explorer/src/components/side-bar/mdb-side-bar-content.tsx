@@ -1,18 +1,44 @@
 import type { Driver, Record as MDBRecord } from "millenniumdb-driver";
 import type { GraphAPI } from "../../hooks/use-graph-api";
 import type { NodeId } from "../../types/graph";
-import { Box, Loader, LoadingOverlay, Text } from "@mantine/core";
+import {
+  Badge,
+  Box,
+  Code,
+  Flex,
+  Loader,
+  Text,
+  Title
+} from "@mantine/core";
 import { getDescribeQuery } from "../../utils/queries";
 import { useEffect, useState } from "react";
+import type { GraphSettings } from "../settings/settings";
+import { getNodeName } from "../../utils/data-format";
 
 type MDBSideBarContentProps = {
   selectedNodeIds: Set<NodeId>;
+  getColorForLabel: (label: string) => string;
+  settings: GraphSettings;
   graphAPI: React.RefObject<GraphAPI | null>;
   driver: Driver;
 };
 
-export const MDBSideBarContent = ({ selectedNodeIds, graphAPI, driver }: MDBSideBarContentProps) => {
-  const [description, setDescription] = useState<object | null>(null);
+type NodeDescription = {
+  id: NodeId;
+  name: string;
+  type: string;
+  labels: string[];
+  properties: Record<string, any>;
+};
+
+export const MDBSideBarContent = ({
+  selectedNodeIds,
+  getColorForLabel,
+  settings,
+  graphAPI,
+  driver
+}: MDBSideBarContentProps) => {
+  const [description, setDescription] = useState<NodeDescription | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +56,25 @@ export const MDBSideBarContent = ({ selectedNodeIds, graphAPI, driver }: MDBSide
         await result.variables(); // TODO: unused, but necessary due to a driver bug
         const records = await result.records();
 
-        setDescription(records.length > 0 ? records[0] : null);
+        if (records.length === 0) {
+          setDescription(null);
+          return;
+        }
+
+        const record: MDBRecord = records[0];
+        const nodeDescription = {
+          id: record.get("object").id,
+          name: getNodeName(
+            record.get("object").id,
+            record.get("properties"),
+            settings.searchProperties
+          ),
+          type: "Named Node",
+          labels: record.get("labels"),
+          properties: record.get("properties"),
+        };
+        
+        setDescription(nodeDescription);
       } catch (err) {
         setError(String(err));
       } finally {
@@ -62,6 +106,7 @@ export const MDBSideBarContent = ({ selectedNodeIds, graphAPI, driver }: MDBSide
             alignItems: "center",
             justifyContent: "center",
             width: "100%",
+            height: "100%",
           }}
         >
           <Loader type="dots" />
@@ -78,8 +123,43 @@ export const MDBSideBarContent = ({ selectedNodeIds, graphAPI, driver }: MDBSide
       return <Text p="sm">{"Node not found"}</Text>;
     }
 
-    // TODO: Render correctly
-    return <Text p="sm">{JSON.stringify(description)}</Text>;
+    return (
+      <Box p="md">
+        <Box mb="md">
+          <Title order={2}>{description.name}</Title>
+          { description.name !== description.id && (
+            <Text c="dimmed" size="sm">
+              {description.id}
+            </Text>
+          )}
+        </Box>
+        <Code display="inline-block">{description.type}</Code>
+        <Flex gap="xs" wrap="wrap" mb="md">
+          {(description.labels ?? []).map((label) => (
+            <Badge key={label} color={getColorForLabel(label)}>
+              {label}
+            </Badge>
+          ))}
+        </Flex>
+        <Box>
+          <Title order={4} mb="xs">
+            Properties
+          </Title>
+          {Object.keys(description.properties ?? {}).length === 0 ? (
+            <Text>No properties available</Text>
+          ) : (
+            Object.entries(description.properties!).map(([key, value]) => (
+              <Box key={key} mb="xs">
+                <Title order={6} mb="xs">
+                  {key}
+                </Title>
+                <Code block mb="md">{String(value)}</Code>
+              </Box>
+            ))
+          )}
+        </Box>
+      </Box>
+    )
   }
 
   if (selectedNodeIds.size > 1) {

@@ -4,13 +4,20 @@ import type { NodeId } from "../../types/graph";
 import { ActionIcon, Box, CloseButton, Divider, Paper, ScrollArea, Tooltip, Transition } from "@mantine/core";
 import { useEffect, useState, type ReactNode } from "react";
 import { IconChevronCompactLeft } from "@tabler/icons-react";
+import type { GraphSettings } from "../settings/settings";
 
 type SideBarProps = {
   selectedNodeIds: Set<NodeId>;
-  renderContent?: ((selectedNodeIds: Set<NodeId>) => ReactNode) | undefined;
+  getColorForLabel: (label: string) => string;
+  settings: GraphSettings;
+  renderContent?: ((
+    selectedNodeIds: Set<NodeId>,
+    getColorForLabel: (label: string) => string,
+    settings: GraphSettings
+  ) => ReactNode) | undefined;
 };
 
-export const SideBar = ({ selectedNodeIds, renderContent }: SideBarProps) => {
+export const SideBar = ({ selectedNodeIds, getColorForLabel, settings, renderContent }: SideBarProps) => {
   const [open, setOpen] = useState<boolean>(false);
   const [autoTriggered, setAutoTriggered] = useState<boolean>(false);
 
@@ -31,7 +38,9 @@ export const SideBar = ({ selectedNodeIds, renderContent }: SideBarProps) => {
               <CloseButton onClick={() => setOpen(false)} />
             </Box>
             <Divider />
-            <Box className={classes.contentContainer}>{renderContent?.(selectedNodeIds)}</Box>
+            <Box className={classes.contentContainer}>
+              {renderContent?.(selectedNodeIds, getColorForLabel, settings)}
+            </Box>
           </Paper>
         )}
       </Transition>

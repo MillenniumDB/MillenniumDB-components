@@ -30,7 +30,6 @@
 .contentContainer {
   flex: 1;
   overflow-y: scroll;
-  display: flex;
 }
 
 @media (max-width: 576px) {
