@@ -1,5 +1,5 @@
 export type { GraphColorConfig } from "./constants/colors";
-export { GraphExplorer, type GraphExplorerAPI as GraphExplorerHandle } from "./graph-explorer";
+export { GraphExplorer } from "./graph-explorer";
 export type { MDBGraphData, MDBGraphLink, MDBGraphNode } from "./types/graph";
 export { MDBGraphExplorer, type MDBGraphExplorerProps } from "./mdb-graph-explorer";
-export { useGraphAPI } from "./hooks/use-graph-api";
+export { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
