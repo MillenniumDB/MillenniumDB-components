@@ -10,10 +10,9 @@ import {
   Text,
   Title
 } from "@mantine/core";
-import { getDescribeQuery } from "../../utils/queries";
 import { useEffect, useState } from "react";
 import type { GraphSettings } from "../settings/settings";
-import { getNodeName } from "../../utils/data-format";
+import { getNodeDescription } from "../../utils/node-utils";
 
 type MDBSideBarContentProps = {
   selectedNodeIds: Set<NodeId>;
@@ -49,30 +48,11 @@ export const MDBSideBarContent = ({
       setDescription(null);
 
       try {
-        const query = getDescribeQuery(nodeId);
-        const session = driver.session();
-
-        const result = session.run(query);
-        const records = await result.records();
-
-        if (records.length === 0) {
-          setDescription(null);
-          return;
-        }
-
-        const record = records[0];
-        const nodeDescription = {
-          id: record.get("object").id,
-          name: getNodeName(
-            record.get("object").id,
-            record.get("properties"),
-            settings.searchProperties
-          ),
-          type: "Named Node",
-          labels: record.get("labels"),
-          properties: record.get("properties"),
-        };
-        
+        const nodeDescription = await getNodeDescription(
+          nodeId,
+          settings.searchProperties,
+          driver
+        );
         setDescription(nodeDescription);
       } catch (err) {
         setError(String(err));
@@ -90,7 +70,7 @@ export const MDBSideBarContent = ({
 
     const [nodeId] = [...selectedNodeIds];
     describeNode(nodeId);
-  }, [selectedNodeIds]);
+  }, [selectedNodeIds, settings.searchProperties, driver]);
 
   if (selectedNodeIds.size === 0) {
     return <Text p="sm">{"No selection"}</Text>;

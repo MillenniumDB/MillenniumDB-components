@@ -40,10 +40,16 @@ export type GraphExplorerProps = {
   graphColors?: Partial<GraphColorConfig>;
   initialGraphData?: MDBGraphData | undefined;
   initialSettings?: GraphSettings | undefined;
-  onNodeExpand?: (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean) => void;
+  onNodeExpand?: (
+    node: NodeObject<MDBGraphNode>,
+    event: MouseEvent,
+    outgoing: boolean,
+    settings: GraphSettings
+  ) => void;
   fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
   onSearchSelection?: (node: MDBGraphNode, properties: string[]) => Promise<void>;
+  onSettingsChange?: (settings: GraphSettings) => void;
   renderSideBarContent?: (
     selectedNodeIds: Set<NodeId>,
     getColorForLabel: (label: string) => string,
@@ -63,6 +69,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       fetchNodes,
       abortFetchNodes,
       onSearchSelection,
+      onSettingsChange,
       renderSideBarContent,
     },
     ref
@@ -122,6 +129,13 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       },
       [computedGraphColors],
     );
+
+    // Updates on graph settings changes
+    useEffect(() => {
+      if (onSettingsChange) {
+        onSettingsChange(settings);
+      }
+    }, [settings]);
 
     // Render nodes
     const handleNodeCanvasObject = useCallback(
@@ -409,11 +423,11 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
             break;
           }
           case "expand-outgoing": {
-            onNodeExpand?.(node, event, true);
+            onNodeExpand?.(node, event, true, settings);
             break;
           }
           case "expand-incoming": {
-            onNodeExpand?.(node, event, false);
+            onNodeExpand?.(node, event, false, settings);
             break;
           }
           case "remove": {

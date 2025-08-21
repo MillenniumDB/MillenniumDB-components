@@ -5,11 +5,11 @@ import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
-import { getDescribeQuery, getFetchNodesQuery } from "./utils/queries";
+import { getFetchNodesQuery } from "./utils/queries";
 import type { GraphColorConfig } from "./constants/colors";
 import { MDBSideBarContent } from "./components/side-bar/mdb-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
-import { getNodeName } from "./utils/data-format";
+import { getNodeDescription } from "./utils/node-utils";
 
 export type MDBGraphExplorerProps = {
   driver: Driver;
@@ -27,30 +27,53 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
   const fetchNodesSessionRef = useRef<Session | null>(null);
   const fetchNodesResultRef = useRef<Result | null>(null);
 
-  const handleNodeExpand = useCallback(async (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean) => {
+  const handleNodeExpand = useCallback(async (
+    node: NodeObject<MDBGraphNode>,
+    event: MouseEvent,
+    outgoing: boolean,
+    settings: GraphSettings
+  ) => {
     if (!graphAPI.current) return;
 
     try {
       const session = driver.session();
 
       if (outgoing) {
-        const result = session.run(`MATCH (${node.id})-[?edgeId :?type]->(?target) RETURN *`);
+        const result = session.run(`MATCH (${node.id})-[?edge :?type]->(?target) RETURN *`);
         const records = await result.records();
         for (const record of records) {
-          const edgeId = record.get("edgeId");
+          const edgeId = record.get("edge").id;
           const type = record.get("type");
           const target = record.get("target");
-          graphAPI.current.addNode({ id: target.id, name: `${target}` });
+          const nodeDescription = await getNodeDescription(target.id, settings.searchProperties, driver);
+          if (nodeDescription) {
+            graphAPI.current.addNode({
+              id: target.id,
+              name: nodeDescription.name,
+              types: nodeDescription.labels,
+            });
+          } else {
+            graphAPI.current.addNode({ id: target.id, name: `${target}` });
+          }
           graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
         }
       } else {
-        const result = session.run(`MATCH (?source)-[?edgeId :?type]->(${node.id}) RETURN *`);
+        const result = session.run(`MATCH (?source)-[?edge :?type]->(${node.id}) RETURN *`);
         const records = await result.records();
         for (const record of records) {
           const source = record.get("source");
-          const edgeId = record.get("edgeId");
+          const edgeId = record.get("edge").id;
           const type = record.get("type");
-          graphAPI.current.addNode({ id: source.id, name: `${source}` });
+          const nodeDescription = await getNodeDescription(source.id, settings.searchProperties, driver);
+          if (nodeDescription) {
+            graphAPI.current.addNode({
+              id: source.id,
+              name: nodeDescription.name,
+              types: nodeDescription.labels,
+            });
+          } else {
+            graphAPI.current.addNode({ id: source.id, name: `${source}` });
+          }
           graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: source.id, target: node.id });
         }
       }
@@ -64,27 +87,18 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     if (!graphAPI.current) return;
 
     try {
-      const query = getDescribeQuery(node.id);
-      const session = driver.session();
-
-      const result = session.run(query);
-      await result.variables(); // TODO: unused, but necessary due to a driver bug
-      const records = await result.records();
-
-      if (records.length === 0) {
+      const nodeDescription = await getNodeDescription(node.id, properties, driver);
+      if (!nodeDescription) {
         graphAPI.current.addNode(node);
         return;
       }
-
-      const record = records[0];
-      const labels = record.get("labels");
       graphAPI.current.addNode({
         ...node,
-        name: getNodeName(node.id, record.get("properties"), properties),
-        types: labels,
+        name: nodeDescription.name,
+        types: nodeDescription.labels,
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error in handleSearchSelection:", error);
       graphAPI.current.addNode(node);
     } finally {
       graphAPI.current.update();
@@ -140,6 +154,29 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     }
   }, []);
 
+  const handleSettingsChange = useCallback(async (settings: GraphSettings) => {
+    if (!graphAPI.current) return;
+
+    const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
+    const updates = await Promise.all(
+      nodeIds.map(async (id) => {
+        try {
+          const nodeDescription = await getNodeDescription(id, settings.searchProperties, driver);
+          if (!nodeDescription) return null;
+          return { id, name: nodeDescription.name, types: nodeDescription.labels };
+        } catch (err) {
+          console.error(`Failed to update node ${id}:`, err);
+          return null;
+        }
+      })
+    );
+
+    for (const u of updates) {
+      if (u) graphAPI.current.updateNode(u);
+    }
+    graphAPI.current.update();
+  }, [driver, graphAPI]);
+
   const handleRenderSidebarContent = (
     selectedNodeIds: Set<NodeId>,
     getColorForLabel: (label: string) => string,
@@ -163,6 +200,7 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
       fetchNodes={handleFetchNodes}
       abortFetchNodes={handleAbortFetchNodes}
       onSearchSelection={handleSearchSelection}
+      onSettingsChange={handleSettingsChange}
       renderSideBarContent={handleRenderSidebarContent}
     />
   );

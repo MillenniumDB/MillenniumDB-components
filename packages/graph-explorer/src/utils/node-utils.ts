@@ -1,4 +1,14 @@
-import type { GraphSettings } from "../components/settings/settings";
+import type { Driver } from "@millenniumdb/driver";
+import type { NodeId } from "../types/graph";
+import { getDescribeQuery } from "./queries";
+
+export type NodeDescription = {
+  id: NodeId;
+  name: string;
+  type: string;
+  labels: string[];
+  properties: Record<string, any>;
+};
 
 export function valueToString(value: unknown): string | null {
   if (value == null) return null;
@@ -70,4 +80,37 @@ export function getNodeName(
     if (text) return text;
   }
   return id;
+}
+
+export async function getNodeDescription(
+  id: NodeId, settingsProperties: string[], driver: Driver
+): Promise<NodeDescription | null> {
+  try {
+    const query = getDescribeQuery(id);
+    const session = driver.session();
+
+    const result = session.run(query);
+    const records = await result.records();
+
+    if (records.length === 0) {
+      return null;
+    }
+
+    const record = records[0];
+    const nodeDescription = {
+      id: record.get("object").id,
+      name: getNodeName(
+        record.get("object").id,
+        record.get("properties"),
+        settingsProperties
+      ),
+      type: "Named Node",
+      labels: record.get("labels"),
+      properties: record.get("properties"),
+    };
+
+    return nodeDescription;
+  } catch (err) {
+    throw new Error(`Failed to get node description: ${err}`);
+  }
 }
