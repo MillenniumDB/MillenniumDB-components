@@ -22,7 +22,6 @@ import {
   type SelectionBounds,
 } from "./components/rectangular-selection/rectangular-selection";
 import { Toolbar, type ToolId } from "./components/toolbar/toolbar";
-import { DEFAULT_GRAPH_COLORS, type GraphColorConfig } from "./constants/colors";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
 import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
@@ -31,6 +30,7 @@ import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-s
 import { SideBar } from "./components/side-bar/side-bar";
 import clsx from "clsx";
 import { Settings, type GraphSettings } from "./components/settings/settings";
+import { useGraphColors, type GraphColorConfig } from "./hooks/use-graph-colors";
 
 export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
@@ -86,10 +86,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     const fgRef = useRef<ForceGraphMethods<MDBGraphNode, MDBGraphLink>>(undefined);
 
     // Graph colors
-    const computedGraphColors = useMemo<GraphColorConfig>(
-      () => ({ ...DEFAULT_GRAPH_COLORS, ...graphColors }),
-      [graphColors]
-    );
+    const computedGraphColors = useGraphColors(graphColors);
 
     // Node label colors
     const labelColorMap = useRef(new Map<string, string>());
@@ -176,15 +173,22 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         }
 
         // Draw the border
-        ctx.beginPath();
-        ctx.arc(x, y, NODE_DIMENSIONS.radius, 0, 2 * Math.PI);
-        if (isSelected || isRectangularSelected) {
-          ctx.strokeStyle = computedGraphColors.node.border.selected;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        } else if (isHovered) {
-          ctx.strokeStyle = computedGraphColors.node.border.hovered;
-          ctx.lineWidth = 1;
+        let borderWidth: number | null = null;
+        let borderColor = '';
+
+        if (isHovered) {
+          borderWidth = 4 / globalScale;
+          borderColor = computedGraphColors.node.border.selected;
+        } else if (isSelected || isRectangularSelected) {
+          borderWidth = 3 / globalScale;
+          borderColor = computedGraphColors.node.border.hovered;
+        }
+
+        if (borderWidth !== null) {
+          ctx.beginPath();
+          ctx.arc(x, y, NODE_DIMENSIONS.radius + borderWidth / 2, 0, 2 * Math.PI);
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = borderWidth;
           ctx.stroke();
         }
 

@@ -6,7 +6,7 @@ import type { NodeObject } from "react-force-graph-2d";
 import type { MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
 import { getFetchNodesQuery } from "./utils/queries";
-import type { GraphColorConfig } from "./constants/colors";
+import type { GraphColorConfig } from "./hooks/use-graph-colors";
 import { MDBSideBarContent } from "./components/side-bar/mdb-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
 import { getNodeDescription } from "./utils/node-utils";
