@@ -31,6 +31,7 @@ import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-s
 import { SideBar } from "./components/side-bar/side-bar";
 import clsx from "clsx";
 import { Settings, type GraphSettings } from "./components/settings/settings";
+import { useGraphColors } from "./hooks/use-graph-colors";
 
 export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
@@ -86,10 +87,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     const fgRef = useRef<ForceGraphMethods<MDBGraphNode, MDBGraphLink>>(undefined);
 
     // Graph colors
-    const computedGraphColors = useMemo<GraphColorConfig>(
-      () => ({ ...DEFAULT_GRAPH_COLORS, ...graphColors }),
-      [graphColors]
-    );
+    const computedGraphColors = useGraphColors(graphColors);
 
     // Node label colors
     const labelColorMap = useRef(new Map<string, string>());
@@ -180,13 +178,13 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         // Draw the border
         ctx.beginPath();
         ctx.arc(x, y, NODE_DIMENSIONS.radius, 0, 2 * Math.PI);
-        if (isSelected || isRectangularSelected) {
+        if (isHovered) {
           ctx.strokeStyle = computedGraphColors.node.border.selected;
           ctx.lineWidth = 1;
           ctx.stroke();
-        } else if (isHovered) {
+        } else if (isSelected || isRectangularSelected) {
           ctx.strokeStyle = computedGraphColors.node.border.hovered;
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 0.6;
           ctx.stroke();
         }
 
