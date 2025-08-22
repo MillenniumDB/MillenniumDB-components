@@ -22,7 +22,6 @@ import {
   type SelectionBounds,
 } from "./components/rectangular-selection/rectangular-selection";
 import { Toolbar, type ToolId } from "./components/toolbar/toolbar";
-import { DEFAULT_GRAPH_COLORS, type GraphColorConfig } from "./constants/colors";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
 import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
@@ -31,7 +30,7 @@ import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-s
 import { SideBar } from "./components/side-bar/side-bar";
 import clsx from "clsx";
 import { Settings, type GraphSettings } from "./components/settings/settings";
-import { useGraphColors } from "./hooks/use-graph-colors";
+import { useGraphColors, type GraphColorConfig } from "./hooks/use-graph-colors";
 
 export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
 
@@ -176,15 +175,22 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         }
 
         // Draw the border
-        ctx.beginPath();
-        ctx.arc(x, y, NODE_DIMENSIONS.radius, 0, 2 * Math.PI);
+        let borderWidth: number | null = null;
+        let borderColor = '';
+
         if (isHovered) {
-          ctx.strokeStyle = computedGraphColors.node.border.selected;
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          borderWidth = 4 / globalScale;
+          borderColor = computedGraphColors.node.border.selected;
         } else if (isSelected || isRectangularSelected) {
-          ctx.strokeStyle = computedGraphColors.node.border.hovered;
-          ctx.lineWidth = 0.6;
+          borderWidth = 3 / globalScale;
+          borderColor = computedGraphColors.node.border.hovered;
+        }
+
+        if (borderWidth !== null) {
+          ctx.beginPath();
+          ctx.arc(x, y, NODE_DIMENSIONS.radius + borderWidth / 2, 0, 2 * Math.PI);
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = borderWidth;
           ctx.stroke();
         }
 
