@@ -23,6 +23,7 @@ export type GraphColorConfig = {
     background: string;
     foreground: string;
   };
+  background: string;
 };
 
 const DEFAULT_TYPE_PALETTE = [
@@ -82,6 +83,7 @@ function makeDefaultGraphColors(theme: MantineTheme, colorScheme: string): Graph
       background: rgba(background, 0.8),
       foreground: text,
     },
+    background: background,
   };
 }
 

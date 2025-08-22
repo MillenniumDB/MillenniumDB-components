@@ -608,6 +608,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           graphData={graphAPI.graphData}
           width={width}
           height={height}
+          backgroundColor={computedGraphColors.background}
           nodeCanvasObject={handleNodeCanvasObject}
           nodeCanvasObjectMode={() => "replace"}
           linkCanvasObject={handleLinkCanvasObject}
