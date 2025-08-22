@@ -161,9 +161,12 @@ export function useGraphAPI(): GraphAPI {
   const update = useCallback(() => {
     if (!hasChanges.current) return;
 
+    const newNodes = Array.from(nodeMap.current.values());
+    const newLinks = Array.from(linkMap.current.values());
+
     setGraphData({
-      nodes: Array.from(nodeMap.current.values()),
-      links: Array.from(linkMap.current.values()),
+      nodes: newNodes,
+      links: newLinks,
     });
     hasChanges.current = false;
   }, []);

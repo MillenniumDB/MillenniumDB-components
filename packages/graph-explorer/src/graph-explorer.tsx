@@ -119,15 +119,12 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     const getColorForLabel = useCallback(
       (label: string) => {
         if (!labelColorMap.current.has(label)) {
-          const nextColor =
-            computedGraphColors.types[
-              labelColorMap.current.size % computedGraphColors.types.length
-            ];
+          const nextColor = computedGraphColors.types[labelColorMap.current.size % computedGraphColors.types.length];
           labelColorMap.current.set(label, nextColor);
         }
         return labelColorMap.current.get(label)!;
       },
-      [computedGraphColors],
+      [computedGraphColors]
     );
 
     // Updates on graph settings changes
@@ -142,7 +139,8 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       (node: NodeObject<MDBGraphNode>, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const { id, x, y, types, name } = node;
 
-        if (!x || !y) return;
+        if (x === undefined || y === undefined) return;
+
         ctx.save();
 
         const isHovered = id === hoveredNodeId;
@@ -555,7 +553,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           for (const node of graphAPI.graphData.nodes) {
             const { id, x, y } = node;
 
-            if (!x || !y) continue;
+            if (x === undefined || y === undefined) continue;
             if (selectedNodeIds.has(node.id)) continue;
 
             const isOutsideRectangleSelection =
