@@ -32,7 +32,7 @@
   overflow-y: scroll;
 }
 
-@media (max-width: 576px) {
+@container main-container (max-width: 576px) {
   .root {
     width: auto;
     left: 0;

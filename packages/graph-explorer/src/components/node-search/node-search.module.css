@@ -10,7 +10,7 @@
   overflow-y: auto;
 }
 
-@media (max-width: 576px) {
+@container main-container (max-width: 576px) {
   .root {
     width: auto;
     right: var(--mantine-spacing-sm);
