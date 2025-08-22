@@ -105,7 +105,12 @@ export const MDBSideBarContent = ({
     return (
       <Box p="md">
         <Box mb="md">
-          <Title order={2}>{description.name}</Title>
+          <Title
+            order={2}
+            style={{ wordBreak: "break-word" }}
+          >
+            {description.name}
+          </Title>
           { description.name !== description.id && (
             <Text c="dimmed" size="sm">
               {description.id}
