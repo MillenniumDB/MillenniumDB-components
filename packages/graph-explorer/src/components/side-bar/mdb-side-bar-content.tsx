@@ -48,10 +48,11 @@ export const MDBSideBarContent = ({
       setDescription(null);
 
       try {
+        const session = driver.session();
         const nodeDescription = await getNodeDescription(
           nodeId,
           settings.searchProperties,
-          driver
+          session
         );
         setDescription(nodeDescription);
       } catch (err) {

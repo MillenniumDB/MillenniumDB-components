@@ -34,9 +34,10 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     settings: GraphSettings
   ) => {
     if (!graphAPI.current) return;
+    let session;
 
     try {
-      const session = driver.session();
+      session = driver.session();
 
       if (outgoing) {
         const result = session.run(`MATCH (${node.id})-[?edge :?type]->(?target) RETURN *`);
@@ -45,7 +46,7 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
           const edgeId = record.get("edge").id;
           const type = record.get("type");
           const target = record.get("target");
-          const nodeDescription = await getNodeDescription(target.id, settings.searchProperties, driver);
+          const nodeDescription = await getNodeDescription(target.id, settings.searchProperties, session);
           if (nodeDescription) {
             graphAPI.current.addNode({
               id: target.id,
@@ -64,7 +65,7 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
           const source = record.get("source");
           const edgeId = record.get("edge").id;
           const type = record.get("type");
-          const nodeDescription = await getNodeDescription(source.id, settings.searchProperties, driver);
+          const nodeDescription = await getNodeDescription(source.id, settings.searchProperties, session);
           if (nodeDescription) {
             graphAPI.current.addNode({
               id: source.id,
@@ -80,14 +81,17 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
       graphAPI.current.update();
     } catch {
     } finally {
+      session?.close();
     }
   }, []);
 
   const handleSearchSelection = useCallback(async (node: MDBGraphNode, properties: string[]) => {
     if (!graphAPI.current) return;
+    let session;
 
     try {
-      const nodeDescription = await getNodeDescription(node.id, properties, driver);
+      session = driver.session();
+      const nodeDescription = await getNodeDescription(node.id, properties, session);
       if (!nodeDescription) {
         graphAPI.current.addNode(node);
         return;
@@ -102,6 +106,7 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
       graphAPI.current.addNode(node);
     } finally {
       graphAPI.current.update();
+      session?.close();
     }
   }, []);
 
@@ -160,13 +165,17 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
     const updates = await Promise.all(
       nodeIds.map(async (id) => {
+        let session;
         try {
-          const nodeDescription = await getNodeDescription(id, settings.searchProperties, driver);
+          session = driver.session();
+          const nodeDescription = await getNodeDescription(id, settings.searchProperties, session);
           if (!nodeDescription) return null;
           return { id, name: nodeDescription.name, types: nodeDescription.labels };
         } catch (err) {
           console.error(`Failed to update node ${id}:`, err);
           return null;
+        } finally {
+          session?.close();
         }
       })
     );

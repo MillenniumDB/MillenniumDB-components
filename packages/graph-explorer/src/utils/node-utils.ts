@@ -1,4 +1,4 @@
-import type { Driver } from "@millenniumdb/driver";
+import type { Driver, Session } from "@millenniumdb/driver";
 import type { NodeId } from "../types/graph";
 import { getDescribeQuery } from "./queries";
 
@@ -83,11 +83,10 @@ export function getNodeName(
 }
 
 export async function getNodeDescription(
-  id: NodeId, settingsProperties: string[], driver: Driver
+  id: NodeId, settingsProperties: string[], session: Session
 ): Promise<NodeDescription | null> {
   try {
     const query = getDescribeQuery(id);
-    const session = driver.session();
 
     const result = session.run(query);
     const records = await result.records();
