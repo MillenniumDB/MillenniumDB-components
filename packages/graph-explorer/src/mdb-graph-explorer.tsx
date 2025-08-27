@@ -15,7 +15,6 @@ export type MDBGraphExplorerProps = {
   driver: Driver;
   initialGraphData?: MDBGraphData;
   initialSettings?: GraphSettings;
-  graphAPI: GraphAPI;
   style?: CSSProperties;
   className?: string;
   graphColors?: Partial<GraphColorConfig>;
