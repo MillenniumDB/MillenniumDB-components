@@ -1,20 +1,20 @@
 import { Meta, StoryObj } from "@storybook/react-vite";
-import { MDBGraphExplorer } from "../packages/graph-explorer/src/index";
+import { SPARQLGraphExplorer } from "../packages/graph-explorer/src/index";
 import { Container } from "@mantine/core";
 import { driver } from "@millenniumdb/driver";
 import React from "react";
 
 const meta = {
-  title: "MDBGraphExplorer",
-  component: MDBGraphExplorer,
+  title: "SPARQLGraphExplorer",
+  component: SPARQLGraphExplorer,
   parameters: {
     layout: "fullscreen",
   },
   argTypes: {},
-} satisfies Meta<typeof MDBGraphExplorer>;
+} satisfies Meta<typeof SPARQLGraphExplorer>;
 
 export default meta;
-type Story = StoryObj<typeof MDBGraphExplorer>;
+type Story = StoryObj<typeof SPARQLGraphExplorer>;
 
 const driverInstance = driver("http://localhost:1234");
 
@@ -59,11 +59,11 @@ export const Default: Story = {
           flexDirection: "column",
         }}
       >
-        <MDBGraphExplorer
+        <SPARQLGraphExplorer
           {...args}
           style={{ flex: 1, border: "1px solid red" }}
           initialSettings={{
-            searchProperties: ["name"],
+            searchProperties: ["<http://example.com/subject>"],
           }}
         />
       </Container>

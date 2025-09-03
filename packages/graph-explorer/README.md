@@ -29,10 +29,10 @@ import '@mantine/core/styles.css';
 import '@millenniumdb/graph-explorer/styles.css'
 ```
 
-Use the component with MillenniumDB:
+Use the component with MillenniumDB (assuming you are using MQL):
 
 ```typescript
-import { MDBGraphExplorer, type MDBGraphData } from "@millenniumdb/graph-explorer";
+import { MQLGraphExplorer, type MDBGraphData } from "@millenniumdb/graph-explorer";
 import { driver } from "@millenniumdb/driver";
 
 
@@ -45,7 +45,7 @@ const driverInstance = driver("http://localhost:1234");
 
 export default function App() {
   return (
-    <GraphExplorer
+    <MQLGraphExplorer
       initialGraphData={data}
       driver={driverInstance}
       style={{ width: 500, height: 500 }}

@@ -1,6 +1,6 @@
-import type { Driver, Session } from "@millenniumdb/driver";
+import { IRI, type Driver, type Session, Record as MDBRecord } from "@millenniumdb/driver";
 import type { NodeId } from "../types/graph";
-import { getDescribeQuery } from "./queries";
+import { getDescribeQuery, getLiteralStatementsQuery } from "./queries";
 
 export type NodeDescription = {
   id: NodeId;
@@ -8,6 +8,13 @@ export type NodeDescription = {
   type: string;
   labels: string[];
   properties: Record<string, any>;
+};
+
+export type IRIDescription = {
+  iri: string;
+  name: string;
+  type: string;
+  literals: MDBRecord[];
 };
 
 export function valueToString(value: unknown): string | null {
@@ -69,11 +76,7 @@ export function valueToString(value: unknown): string | null {
   }
 }
 
-export function getNodeName(
-  id: string,
-  properties: Record<string, unknown>,
-  settingsProperties: string[]
-): string {
+export function getNodeName(id: string, properties: Record<string, unknown>, settingsProperties: string[]): string {
   for (const key of settingsProperties) {
     const raw = properties?.[key];
     const text = valueToString(raw);
@@ -83,7 +86,9 @@ export function getNodeName(
 }
 
 export async function getNodeDescription(
-  id: NodeId, settingsProperties: string[], session: Session
+  id: NodeId,
+  settingsProperties: string[],
+  session: Session
 ): Promise<NodeDescription | null> {
   try {
     const query = getDescribeQuery(id);
@@ -98,11 +103,7 @@ export async function getNodeDescription(
     const record = records[0];
     const nodeDescription = {
       id: record.get("object").id,
-      name: getNodeName(
-        record.get("object").id,
-        record.get("properties"),
-        settingsProperties
-      ),
+      name: getNodeName(record.get("object").id, record.get("properties"), settingsProperties),
       type: "Named Node",
       labels: record.get("labels"),
       properties: record.get("properties"),
@@ -111,5 +112,32 @@ export async function getNodeDescription(
     return nodeDescription;
   } catch (err) {
     throw new Error(`Failed to get node description: ${err}`);
+  }
+}
+
+export async function getIriDescription(
+  iri: string,
+  settingsProperties: string[],
+  session: Session
+): Promise<IRIDescription | null> {
+  try {
+    const query = getLiteralStatementsQuery(iri);
+
+    const result = session.run(query);
+    const records = await result.records();
+
+    if (records.length === 0) {
+      return null;
+    }
+
+    return {
+      iri,
+      name: iri, // TODO: Extract from records
+      type: "IRI",
+      // TODO: Should entities be shown here too?
+      literals: records,
+    };
+  } catch (err) {
+    throw new Error(`Failed to get entity description: ${err}`);
   }
 }

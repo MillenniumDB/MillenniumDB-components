@@ -53,7 +53,6 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, sea
     setLoading(true);
     try {
       const result = await fetchNodes(query, searchProperties ?? []);
-      console.log(result);
       setData(result);
     } catch (error) {
       console.error(error);

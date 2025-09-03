@@ -5,13 +5,13 @@ import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
-import { getFetchNodesQuery } from "./utils/queries";
+import { getFetchNodesQueryMQL } from "./utils/queries";
 import type { GraphColorConfig } from "./hooks/use-graph-colors";
-import { MDBSideBarContent } from "./components/side-bar/mdb-side-bar-content";
+import { MQLSideBarContent } from "./components/side-bar/mql-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
 import { getNodeDescription } from "./utils/node-utils";
 
-export type MDBGraphExplorerProps = {
+export type MQLGraphExplorerProps = {
   driver: Driver;
   initialGraphData?: MDBGraphData;
   initialSettings?: GraphSettings;
@@ -20,69 +20,68 @@ export type MDBGraphExplorerProps = {
   graphColors?: Partial<GraphColorConfig>;
 };
 
-export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGraphExplorerProps) => {
+export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGraphExplorerProps) => {
   const graphAPI = useRef<GraphAPI>(null);
 
   const fetchNodesSessionRef = useRef<Session | null>(null);
   const fetchNodesResultRef = useRef<Result | null>(null);
 
-  const handleNodeExpand = useCallback(async (
-    node: NodeObject<MDBGraphNode>,
-    event: MouseEvent,
-    outgoing: boolean,
-    settings: GraphSettings
-  ) => {
-    if (!graphAPI.current) return;
-    let session;
+  const handleNodeExpand = useCallback(
+    async (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean, settings: GraphSettings) => {
+      if (!graphAPI.current) return;
+      let session;
 
-    try {
-      session = driver.session();
+      try {
+        session = driver.session();
 
-      if (outgoing) {
-        const result = session.run(`MATCH (${node.id})-[?edge :?type]->(?target) RETURN *`);
-        const records = await result.records();
-        for (const record of records) {
-          const edgeId = record.get("edge").id;
-          const type = record.get("type");
-          const target = record.get("target");
-          const nodeDescription = await getNodeDescription(target.id, settings.searchProperties, session);
-          if (nodeDescription) {
-            graphAPI.current.addNode({
-              id: target.id,
-              name: nodeDescription.name,
-              types: nodeDescription.labels,
-            });
-          } else {
-            graphAPI.current.addNode({ id: target.id, name: `${target}` });
+        if (outgoing) {
+          const result = session.run(`MATCH (${node.id})-[?edge :?type]->(?target) RETURN *`);
+          const records = await result.records();
+          for (const record of records) {
+            const edgeId = record.get("edge").id;
+            const type = record.get("type");
+            const target = record.get("target");
+            const nodeDescription = await getNodeDescription(target.id, settings.searchProperties, session);
+            if (nodeDescription) {
+              graphAPI.current.addNode({
+                id: target.id,
+                name: nodeDescription.name,
+                types: nodeDescription.labels,
+              });
+            } else {
+              graphAPI.current.addNode({ id: target.id, name: `${target}` });
+            }
+            graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
           }
-          graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
-        }
-      } else {
-        const result = session.run(`MATCH (?source)-[?edge :?type]->(${node.id}) RETURN *`);
-        const records = await result.records();
-        for (const record of records) {
-          const source = record.get("source");
-          const edgeId = record.get("edge").id;
-          const type = record.get("type");
-          const nodeDescription = await getNodeDescription(source.id, settings.searchProperties, session);
-          if (nodeDescription) {
-            graphAPI.current.addNode({
-              id: source.id,
-              name: nodeDescription.name,
-              types: nodeDescription.labels,
-            });
-          } else {
-            graphAPI.current.addNode({ id: source.id, name: `${source}` });
+        } else {
+          const result = session.run(`MATCH (?source)-[?edge :?type]->(${node.id}) RETURN *`);
+          const records = await result.records();
+          for (const record of records) {
+            const source = record.get("source");
+            const edgeId = record.get("edge").id;
+            const type = record.get("type");
+            const nodeDescription = await getNodeDescription(source.id, settings.searchProperties, session);
+            if (nodeDescription) {
+              graphAPI.current.addNode({
+                id: source.id,
+                name: nodeDescription.name,
+                types: nodeDescription.labels,
+              });
+            } else {
+              graphAPI.current.addNode({ id: source.id, name: `${source}` });
+            }
+            graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: source.id, target: node.id });
           }
-          graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: source.id, target: node.id });
         }
+        graphAPI.current.update();
+      } catch (err) {
+        console.error(err);
+      } finally {
+        session?.close();
       }
-      graphAPI.current.update();
-    } catch {
-    } finally {
-      session?.close();
-    }
-  }, []);
+    },
+    []
+  );
 
   const handleSearchSelection = useCallback(async (node: MDBGraphNode, properties: string[]) => {
     if (!graphAPI.current) return;
@@ -113,7 +112,7 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     if (!graphAPI.current) return [];
 
     try {
-      const fetchNodesQuery = getFetchNodesQuery(query, properties);
+      const fetchNodesQuery = getFetchNodesQueryMQL(query, properties);
       fetchNodesSessionRef.current = driver.session();
       fetchNodesResultRef.current = fetchNodesSessionRef.current.run(fetchNodesQuery);
       const records = await fetchNodesResultRef.current.records();
@@ -158,45 +157,50 @@ export const MDBGraphExplorer = ({ driver, initialGraphData, ...props }: MDBGrap
     }
   }, []);
 
-  const handleSettingsChange = useCallback(async (settings: GraphSettings) => {
-    if (!graphAPI.current) return;
+  const handleSettingsChange = useCallback(
+    async (settings: GraphSettings) => {
+      if (!graphAPI.current) return;
 
-    const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
-    const updates = await Promise.all(
-      nodeIds.map(async (id) => {
-        let session;
-        try {
-          session = driver.session();
-          const nodeDescription = await getNodeDescription(id, settings.searchProperties, session);
-          if (!nodeDescription) return null;
-          return { id, name: nodeDescription.name, types: nodeDescription.labels };
-        } catch (err) {
-          console.error(`Failed to update node ${id}:`, err);
-          return null;
-        } finally {
-          session?.close();
-        }
-      })
-    );
+      const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
+      const updates = await Promise.all(
+        nodeIds.map(async (id) => {
+          let session;
+          try {
+            session = driver.session();
+            const nodeDescription = await getNodeDescription(id, settings.searchProperties, session);
+            if (!nodeDescription) return null;
+            return { id, name: nodeDescription.name, types: nodeDescription.labels };
+          } catch (err) {
+            console.error(`Failed to update node ${id}:`, err);
+            return null;
+          } finally {
+            session?.close();
+          }
+        })
+      );
 
-    for (const u of updates) {
-      if (u) graphAPI.current.updateNode(u);
-    }
-    graphAPI.current.update();
-  }, [driver, graphAPI]);
+      for (const u of updates) {
+        if (u) graphAPI.current.updateNode(u);
+      }
+      graphAPI.current.update();
+    },
+    [driver, graphAPI]
+  );
 
   const handleRenderSidebarContent = (
     selectedNodeIds: Set<NodeId>,
     getColorForLabel: (label: string) => string,
     settings: GraphSettings
   ) => {
-    return <MDBSideBarContent
-      selectedNodeIds={selectedNodeIds}
-      getColorForLabel={getColorForLabel}
-      settings={settings}
-      graphAPI={graphAPI}
-      driver={driver}
-    />;
+    return (
+      <MQLSideBarContent
+        selectedNodeIds={selectedNodeIds}
+        getColorForLabel={getColorForLabel}
+        settings={settings}
+        graphAPI={graphAPI}
+        driver={driver}
+      />
+    );
   };
 
   return (
