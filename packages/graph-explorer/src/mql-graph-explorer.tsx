@@ -10,6 +10,7 @@ import type { GraphColorConfig } from "./hooks/use-graph-colors";
 import { MQLSideBarContent } from "./components/side-bar/mql-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
 import { getNodeDescription } from "./utils/node-utils";
+import { MQLSettingsContent } from "./components/settings/mql-settings-content";
 
 export type MQLGraphExplorerProps = {
   driver: Driver;
@@ -83,8 +84,9 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     []
   );
 
-  const handleSearchSelection = useCallback(async (node: MDBGraphNode, properties: string[]) => {
+  const handleSearchSelection = useCallback(async (node: MDBGraphNode, settings: GraphSettings) => {
     if (!graphAPI.current) return;
+    const properties = settings.searchProperties;
     let session;
 
     try {
@@ -203,6 +205,20 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     );
   };
 
+  const handleRenderSettingsContent = (
+      settings: GraphSettings,
+      onSave: (newSettings: GraphSettings) => void,
+      close: () => void
+    ) => {
+      return (
+        <MQLSettingsContent
+          initialSettings={settings}
+          onSave={onSave}
+          close={close}
+        />
+      );
+    };
+
   return (
     <GraphExplorer
       {...props}
@@ -214,6 +230,7 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
       onSearchSelection={handleSearchSelection}
       onSettingsChange={handleSettingsChange}
       renderSideBarContent={handleRenderSidebarContent}
+      renderSettingsContent={handleRenderSettingsContent}
     />
   );
 };

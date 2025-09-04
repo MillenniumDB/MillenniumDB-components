@@ -4,6 +4,7 @@ import classes from "./node-search.module.css";
 import { Box, CloseButton, Combobox, Loader, TextInput, Text, useCombobox } from "@mantine/core";
 import type { MDBGraphNode } from "../../types/graph";
 import { IconSearch } from "@tabler/icons-react";
+import type { GraphSettings } from "../settings/settings";
 
 export type FetchNodesItem = {
   category: string;
@@ -14,13 +15,13 @@ export type FetchNodesItem = {
 export type NodeSearchProps = {
   fetchNodes?: ((query: string, properties: string[]) => Promise<FetchNodesItem[]>) | undefined;
   abortFetchNodes?: (() => Promise<void>) | undefined;
-  onSearchSelection?: ((node: MDBGraphNode, properties: string[]) => Promise<void>) | undefined;
-  searchProperties?: string[] | undefined;
+  onSearchSelection?: ((node: MDBGraphNode, settings: GraphSettings) => Promise<void>) | undefined;
+  settings: GraphSettings;
 };
 
 const DEBOUNCE_QUERY_MS = 300;
 
-export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, searchProperties }: NodeSearchProps) => {
+export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, settings }: NodeSearchProps) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<FetchNodesItem[]>([]);
   const [value, setValue] = useState<string>("");
@@ -33,7 +34,7 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, sea
   const handleOptionsSubmit = (nodeId: string) => {
     const selectedItem = data.find((item) => item.node.id === nodeId);
     if (selectedItem) {
-      onSearchSelection?.(selectedItem.node, searchProperties ?? []);
+      onSearchSelection?.(selectedItem.node, settings);
       setValue("");
       setData([]);
     }
@@ -52,7 +53,7 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, sea
 
     setLoading(true);
     try {
-      const result = await fetchNodes(query, searchProperties ?? []);
+      const result = await fetchNodes(query, settings.searchProperties ?? []);
       setData(result);
     } catch (error) {
       console.error(error);

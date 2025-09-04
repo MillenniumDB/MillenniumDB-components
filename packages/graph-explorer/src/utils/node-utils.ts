@@ -1,6 +1,6 @@
 import { IRI, type Driver, type Session, Record as MDBRecord } from "@millenniumdb/driver";
 import type { NodeId } from "../types/graph";
-import { getDescribeQuery, getLiteralStatementsQuery } from "./queries";
+import { getDescribeQuery, getIriLabelsQuery, getIriNameQuery, getLiteralStatementsQuery } from "./queries";
 
 export type NodeDescription = {
   id: NodeId;
@@ -14,6 +14,7 @@ export type IRIDescription = {
   iri: string;
   name: string;
   type: string;
+  labels: string[];
   literals: MDBRecord[];
 };
 
@@ -118,24 +119,48 @@ export async function getNodeDescription(
 export async function getIriDescription(
   iri: string,
   settingsProperties: string[],
+  labelsPredicate: string,
   session: Session
 ): Promise<IRIDescription | null> {
   try {
-    const query = getLiteralStatementsQuery(iri);
+    // Literal statements
+    let query = getLiteralStatementsQuery(iri);
 
-    const result = session.run(query);
-    const records = await result.records();
+    let result = session.run(query);
+    let records = await result.records();
+    const literals = records;
 
-    if (records.length === 0) {
+    if (literals.length === 0) {
       return null;
+    }
+
+    // Node name
+    query = getIriNameQuery(iri, settingsProperties);
+
+    result = session.run(query);
+    records = await result.records();
+
+    const nameRecord = records[0] ?? null;
+    const name = nameRecord ? nameRecord.get("o") : iri;
+
+    // Node labels
+    let labels;
+
+    if (labelsPredicate) {
+      query = getIriLabelsQuery(iri, labelsPredicate);
+
+      result = session.run(query);
+      records = await result.records();
+      labels = records.map((record: any) => record.get("o").toString());
     }
 
     return {
       iri,
-      name: iri, // TODO: Extract from records
+      name,
       type: "IRI",
+      labels: labels ?? [],
       // TODO: Should entities be shown here too?
-      literals: records,
+      literals,
     };
   } catch (err) {
     throw new Error(`Failed to get entity description: ${err}`);

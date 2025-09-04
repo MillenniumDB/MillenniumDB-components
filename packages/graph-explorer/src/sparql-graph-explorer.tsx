@@ -8,8 +8,9 @@ import type { GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import { getFetchNodesQueryRDF } from "./utils/queries";
 import type { FetchNodesItem } from "./components/node-search/node-search";
-import { Box } from "@mantine/core";
 import { SPARQLSideBarContent } from "./components/side-bar/sparql-sidebar-content";
+import { getIriDescription } from "./utils/node-utils";
+import { SPARQLSettingsContent } from "./components/settings/sparql-settings-content";
 
 export type SPARQLGraphExplorerProps = {
   driver: Driver;
@@ -42,8 +43,23 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
             const predicate = record.get("predicate");
             const object = record.get("object");
 
+            const iriDescription = await getIriDescription(
+              object,
+              settings.searchProperties,
+              settings.labelsPredicate,
+              session
+            );
+            if (iriDescription) {
+              graphAPI.current.addNode({
+                id: `${object}`,
+                name: iriDescription.name,
+                types: iriDescription.labels,
+              });
+            } else {
+              graphAPI.current.addNode({ id: `${object}`, name: `${object}` });
+            }
+
             const id = `${node.id}-${predicate}-${object}`;
-            graphAPI.current.addNode({ id: `${object}`, name: `${object}` });
             graphAPI.current.addLink({ id, name: `${predicate}`, source: `${node.id}`, target: `${object}` });
           }
         } else {
@@ -53,8 +69,23 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
             const subject = record.get("subject");
             const predicate = record.get("predicate");
 
+            const iriDescription = await getIriDescription(
+              subject,
+              settings.searchProperties,
+              settings.labelsPredicate,
+              session
+            );
+            if (iriDescription) {
+              graphAPI.current.addNode({
+                id: `${subject}`,
+                name: iriDescription.name,
+                types: iriDescription.labels,
+              });
+            } else {
+              graphAPI.current.addNode({ id: `${subject}`, name: `${subject}` });
+            }
+
             const id = `${subject}-${predicate}-${node.id}`;
-            graphAPI.current.addNode({ id: `${subject}`, name: `${subject}` });
             graphAPI.current.addLink({ id, name: `${predicate}`, source: `${subject}`, target: `${node.id}` });
           }
         }
@@ -109,11 +140,35 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     }
   }, []);
 
-  const handleSearchSelection = useCallback(async (node: MDBGraphNode, properties: string[]) => {
+  const handleSearchSelection = useCallback(async (node: MDBGraphNode, settings: GraphSettings) => {
     if (!graphAPI.current) return;
 
-    graphAPI.current.addNode(node);
-    graphAPI.current.update();
+    let session;
+    
+    try {
+      session = driver.session();
+      const nodeDescription = await getIriDescription(
+        node.id,
+        settings.searchProperties,
+        settings.labelsPredicate,
+        session
+      );
+      if (!nodeDescription) {
+        graphAPI.current.addNode(node);
+        return;
+      }
+      graphAPI.current.addNode({
+        ...node,
+        name: nodeDescription.name,
+        types: nodeDescription.labels,
+      });
+    } catch (error) {
+      console.error("Error in handleSearchSelection:", error);
+      graphAPI.current.addNode(node);
+    } finally {
+      graphAPI.current.update();
+      session?.close();
+    }
   }, []);
 
   const handleRenderSidebarContent = (
@@ -132,6 +187,52 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     );
   };
 
+  const handleRenderSettingsContent = (
+    settings: GraphSettings,
+    onSave: (newSettings: GraphSettings) => void,
+    close: () => void
+  ) => {
+    return (
+      <SPARQLSettingsContent
+        initialSettings={settings}
+        onSave={onSave}
+        close={close}
+      />
+    );
+  };
+
+  const handleSettingsChange = useCallback(
+    async (settings: GraphSettings) => {
+      if (!graphAPI.current) return;
+
+      const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
+      const updates = await Promise.all(
+        nodeIds.map(async (id) => {
+          let session;
+          try {
+            session = driver.session();
+            const iriDescription = await getIriDescription(
+              id, settings.searchProperties, settings.labelsPredicate, session
+            );
+            if (!iriDescription) return null;
+            return { id, name: iriDescription.name, types: iriDescription.labels };
+          } catch (err) {
+            console.error(`Failed to update node ${id}:`, err);
+            return null;
+          } finally {
+            session?.close();
+          }
+        })
+      );
+
+      for (const u of updates) {
+        if (u) graphAPI.current.updateNode(u);
+      }
+      graphAPI.current.update();
+    },
+    [driver, graphAPI]
+  );
+
   return (
     <GraphExplorer
       {...props}
@@ -142,7 +243,8 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
       abortFetchNodes={handleAbortFetchNodes}
       onSearchSelection={handleSearchSelection}
       renderSideBarContent={handleRenderSidebarContent}
-      // onSettingsChange={handleSettingsChange}
+      renderSettingsContent={handleRenderSettingsContent}
+      onSettingsChange={handleSettingsChange}
     />
   );
 };

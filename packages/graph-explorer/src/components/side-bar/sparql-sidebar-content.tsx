@@ -1,4 +1,4 @@
-import { Box, Code, Loader, Text, Title } from "@mantine/core";
+import { Badge, Box, Code, Flex, Loader, Text, Title } from "@mantine/core";
 import type { NodeId } from "../../types/graph";
 import type { GraphAPI } from "../../hooks/use-graph-api";
 import type { Driver } from "@millenniumdb/driver";
@@ -33,7 +33,9 @@ export const SPARQLSideBarContent = ({
 
       try {
         const session = driver.session();
-        const iriDescription = await getIriDescription(nodeId, settings.searchProperties, session);
+        const iriDescription = await getIriDescription(
+          nodeId, settings.searchProperties, settings.labelsPredicate, session
+        );
         setDescription(iriDescription);
       } catch (err) {
         setError(String(err));
@@ -51,7 +53,7 @@ export const SPARQLSideBarContent = ({
 
     const [nodeId] = [...selectedNodeIds];
     describeNode(nodeId);
-  }, [selectedNodeIds, settings.searchProperties, driver]);
+  }, [selectedNodeIds, settings.searchProperties, settings.labelsPredicate, driver]);
 
   if (selectedNodeIds.size === 0) {
     return <Text p="sm">{"No selection"}</Text>;
@@ -96,6 +98,13 @@ export const SPARQLSideBarContent = ({
           )}
         </Box>
         <Code display="inline-block">{description.type}</Code>
+        <Flex gap="xs" wrap="wrap" mb="md">
+          {(description.labels ?? []).map((label) => (
+            <Badge key={label} color={getColorForLabel(label)}>
+              {label}
+            </Badge>
+          ))}
+        </Flex>
         <Box>
           <Title order={4} mb="xs">
             Literals

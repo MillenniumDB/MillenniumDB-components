@@ -48,7 +48,12 @@ export type GraphExplorerProps = {
   ) => void;
   fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
-  onSearchSelection?: (node: MDBGraphNode, properties: string[]) => Promise<void>;
+  onSearchSelection?: (node: MDBGraphNode, settings: GraphSettings) => Promise<void>;
+  renderSettingsContent?: (
+    settings: GraphSettings,
+    onSave: (newSettings: GraphSettings) => void,
+    close: () => void
+  ) => ReactNode;
   onSettingsChange?: (settings: GraphSettings) => void;
   renderSideBarContent?: (
     selectedNodeIds: Set<NodeId>,
@@ -64,11 +69,12 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       className = "",
       graphColors,
       initialGraphData,
-      initialSettings = { searchProperties: [] },
+      initialSettings = { searchProperties: [], labelsPredicate: "" },
       onNodeExpand,
       fetchNodes,
       abortFetchNodes,
       onSearchSelection,
+      renderSettingsContent,
       onSettingsChange,
       renderSideBarContent,
     },
@@ -667,10 +673,14 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           fetchNodes={fetchNodes}
           abortFetchNodes={abortFetchNodes}
           onSearchSelection={onSearchSelection}
-          searchProperties={settings.searchProperties}
+          settings={settings}
         />
 
-        <Settings initialSettings={settings} onSave={setSettings} />
+        <Settings
+          initialSettings={settings}
+          onSave={setSettings}
+          renderContent={renderSettingsContent}
+        />
 
         {activeToolId === "rectangular-selection" && (
           <RectangularSelection

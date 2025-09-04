@@ -32,3 +32,19 @@ export const getFetchNodesQueryRDF = (query: string, predicate: string[], limit:
 export const getLiteralStatementsQuery = (iri: string) => {
   return `SELECT * WHERE { ${iri} ?p ?o . FILTER(!ISIRI(?o)) }`;
 };
+
+export const getIriNameQuery = (iri: string, namePredicates: string[]) => {
+  return `SELECT ?p ?o
+  WHERE {
+    ${iri} ?p ?o .
+    VALUES ?p { ${namePredicates.map(pred => `${pred}`).join(" ")} }
+  }
+  LIMIT 1`;
+};
+
+export const getIriLabelsQuery = (iri: string, labelPredicate: string) => {
+  return `SELECT ?o
+  WHERE {
+    ${iri} ${labelPredicate} ?o .
+  }`;
+}

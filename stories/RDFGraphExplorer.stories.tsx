@@ -64,6 +64,7 @@ export const Default: Story = {
           style={{ flex: 1, border: "1px solid red" }}
           initialSettings={{
             searchProperties: ["<http://example.com/subject>"],
+            labelsPredicate: "<http://example.com/subject>",
           }}
         />
       </Container>
