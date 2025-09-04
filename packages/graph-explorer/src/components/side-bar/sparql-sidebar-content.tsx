@@ -80,7 +80,7 @@ export const SPARQLSideBarContent = ({
     }
 
     if (!description) {
-      return <Text p="sm">{"Node not found"}</Text>;
+      return <Text p="sm">{"No statements found"}</Text>;
     }
 
     return (
