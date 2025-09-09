@@ -1,6 +1,6 @@
 import classes from "./side-bar.module.css";
 
-import type { NodeId } from "../../types/graph";
+import type { LinkId, NodeId } from "../../types/graph";
 import { ActionIcon, Box, CloseButton, Divider, Paper, ScrollArea, Tooltip, Transition } from "@mantine/core";
 import { useEffect, useState, type ReactNode } from "react";
 import { IconChevronCompactLeft } from "@tabler/icons-react";
@@ -8,16 +8,20 @@ import type { GraphSettings } from "../settings/settings";
 
 type SideBarProps = {
   selectedNodeIds: Set<NodeId>;
+  selectedLinkIds: Set<LinkId>;
   getColorForLabel: (label: string) => string;
   settings: GraphSettings;
-  renderContent?: ((
-    selectedNodeIds: Set<NodeId>,
-    getColorForLabel: (label: string) => string,
-    settings: GraphSettings
-  ) => ReactNode) | undefined;
+  renderContent?:
+    | ((
+        selectedNodeIds: Set<NodeId>,
+        selectedLinkIds: Set<LinkId>,
+        getColorForLabel: (label: string) => string,
+        settings: GraphSettings
+      ) => ReactNode)
+    | undefined;
 };
 
-export const SideBar = ({ selectedNodeIds, getColorForLabel, settings, renderContent }: SideBarProps) => {
+export const SideBar = ({ selectedNodeIds, selectedLinkIds, getColorForLabel, settings, renderContent }: SideBarProps) => {
   const [open, setOpen] = useState<boolean>(false);
   const [autoTriggered, setAutoTriggered] = useState<boolean>(false);
 
@@ -39,7 +43,7 @@ export const SideBar = ({ selectedNodeIds, getColorForLabel, settings, renderCon
             </Box>
             <Divider />
             <Box className={classes.contentContainer}>
-              {renderContent?.(selectedNodeIds, getColorForLabel, settings)}
+              {renderContent?.(selectedNodeIds, selectedLinkIds, getColorForLabel, settings)}
             </Box>
           </Paper>
         )}

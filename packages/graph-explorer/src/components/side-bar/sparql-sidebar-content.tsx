@@ -1,5 +1,5 @@
 import { Badge, Box, Code, Flex, Loader, Text, Title } from "@mantine/core";
-import type { NodeId } from "../../types/graph";
+import type { LinkId, NodeId } from "../../types/graph";
 import type { GraphAPI } from "../../hooks/use-graph-api";
 import type { Driver } from "@millenniumdb/driver";
 import type { GraphSettings } from "../settings/settings";
@@ -8,6 +8,7 @@ import { getIriDescription, type IRIDescription } from "../../utils/node-utils";
 
 type SPARQLSideBarContentProps = {
   selectedNodeIds: Set<NodeId>;
+  selectedLinkIds: Set<LinkId>;
   getColorForLabel: (label: string) => string;
   settings: GraphSettings;
   graphAPI: React.RefObject<GraphAPI | null>;
@@ -16,6 +17,7 @@ type SPARQLSideBarContentProps = {
 
 export const SPARQLSideBarContent = ({
   selectedNodeIds,
+  selectedLinkIds,
   getColorForLabel,
   settings,
   graphAPI,
@@ -34,7 +36,10 @@ export const SPARQLSideBarContent = ({
       try {
         const session = driver.session();
         const iriDescription = await getIriDescription(
-          nodeId, settings.searchProperties, settings.labelsPredicate, session
+          nodeId,
+          settings.searchProperties,
+          settings.labelsPredicate,
+          session
         );
         setDescription(iriDescription);
       } catch (err) {
@@ -55,11 +60,11 @@ export const SPARQLSideBarContent = ({
     describeNode(nodeId);
   }, [selectedNodeIds, settings.searchProperties, settings.labelsPredicate, driver]);
 
-  if (selectedNodeIds.size === 0) {
+  if (selectedNodeIds.size === 0 && selectedLinkIds.size === 0) {
     return <Text p="sm">{"No selection"}</Text>;
   }
 
-  if (selectedNodeIds.size === 1 && graphAPI.current) {
+  if (selectedNodeIds.size === 1 && selectedLinkIds.size === 0 && graphAPI.current) {
     if (loading) {
       return (
         <Box
@@ -126,9 +131,11 @@ export const SPARQLSideBarContent = ({
     );
   }
 
-  if (selectedNodeIds.size > 1) {
-    return <Text p="sm">{`Selected nodes: ${selectedNodeIds.size}`}</Text>;
+  if (selectedLinkIds.size === 1 && selectedNodeIds.size === 0 && graphAPI.current) {
+    // single link selected
+    return <Box>{'TODO: handle single link selection'}</Box>
   }
 
-  return null; // fallback
+  // multi selection
+  return <Text p="sm">{`Selected ${selectedNodeIds.size} nodes and ${selectedLinkIds.size} links`}</Text>;
 };

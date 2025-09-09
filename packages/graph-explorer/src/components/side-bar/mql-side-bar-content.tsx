@@ -1,6 +1,6 @@
 import type { Driver } from "@millenniumdb/driver";
 import type { GraphAPI } from "../../hooks/use-graph-api";
-import type { NodeId } from "../../types/graph";
+import type { LinkId, NodeId } from "../../types/graph";
 import { Badge, Box, Code, Flex, Loader, Text, Title } from "@mantine/core";
 import { useEffect, useState } from "react";
 import type { GraphSettings } from "../settings/settings";
@@ -8,6 +8,7 @@ import { getNodeDescription } from "../../utils/node-utils";
 
 type MQLSideBarContentProps = {
   selectedNodeIds: Set<NodeId>;
+  selectedLinkIds: Set<LinkId>;
   getColorForLabel: (label: string) => string;
   settings: GraphSettings;
   graphAPI: React.RefObject<GraphAPI | null>;
@@ -24,6 +25,7 @@ type NodeDescription = {
 
 export const MQLSideBarContent = ({
   selectedNodeIds,
+  selectedLinkIds,
   getColorForLabel,
   settings,
   graphAPI,
@@ -61,11 +63,12 @@ export const MQLSideBarContent = ({
     describeNode(nodeId);
   }, [selectedNodeIds, settings.searchProperties, driver]);
 
-  if (selectedNodeIds.size === 0) {
+  if (selectedNodeIds.size === 0 && selectedLinkIds.size === 0) {
     return <Text p="sm">{"No selection"}</Text>;
   }
 
-  if (selectedNodeIds.size === 1 && graphAPI.current) {
+  if (selectedNodeIds.size === 1 && selectedLinkIds.size === 0 && graphAPI.current) {
+    // single node selected
     if (loading) {
       return (
         <Box
@@ -134,9 +137,11 @@ export const MQLSideBarContent = ({
     );
   }
 
-  if (selectedNodeIds.size > 1) {
-    return <Text p="sm">{`Selected nodes: ${selectedNodeIds.size}`}</Text>;
+  if (selectedLinkIds.size === 1 && selectedNodeIds.size === 0 && graphAPI.current) {
+    // single link selected
+    return <Box>{'TODO: handle single link selection'}</Box>
   }
 
-  return null; // fallback
+  // multi selection
+  return <Text p="sm">{`Selected ${selectedNodeIds.size} nodes and ${selectedLinkIds.size} links`}</Text>;
 };

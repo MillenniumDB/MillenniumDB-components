@@ -57,6 +57,7 @@ export type GraphExplorerProps = {
   onSettingsChange?: (settings: GraphSettings) => void;
   renderSideBarContent?: (
     selectedNodeIds: Set<NodeId>,
+    selectedLinkIds: Set<LinkId>,
     getColorForLabel: (label: string) => string,
     settings: GraphSettings
   ) => ReactNode;
@@ -692,6 +693,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
         <SideBar
           selectedNodeIds={selectedNodeIds}
+          selectedLinkIds={selectedLinkIds}
           getColorForLabel={getColorForLabel}
           settings={settings}
           renderContent={renderSideBarContent}

@@ -8,7 +8,9 @@ export const useResizeObserver = (ref: RefObject<HTMLElement | null>) => {
 
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
-      setDimensions({ width, height });
+      requestAnimationFrame(() => {
+        setDimensions({ width, height });
+      });
     });
 
     observer.observe(ref.current);

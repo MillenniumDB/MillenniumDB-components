@@ -1,5 +1,5 @@
 import type { Driver, Result, Session } from "@millenniumdb/driver";
-import type { MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
+import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import { useCallback, useRef, type CSSProperties } from "react";
 import type { GraphSettings } from "./components/settings/settings";
 import type { GraphColorConfig } from "./hooks/use-graph-colors";
@@ -144,7 +144,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     if (!graphAPI.current) return;
 
     let session;
-    
+
     try {
       session = driver.session();
       const nodeDescription = await getIriDescription(
@@ -173,12 +173,14 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
 
   const handleRenderSidebarContent = (
     selectedNodeIds: Set<NodeId>,
+    selectedLinkIds: Set<LinkId>,
     getColorForLabel: (label: string) => string,
     settings: GraphSettings
   ) => {
     return (
       <SPARQLSideBarContent
         selectedNodeIds={selectedNodeIds}
+        selectedLinkIds={selectedLinkIds}
         getColorForLabel={getColorForLabel}
         settings={settings}
         graphAPI={graphAPI}
