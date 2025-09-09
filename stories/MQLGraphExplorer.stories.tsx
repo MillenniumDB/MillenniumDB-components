@@ -63,7 +63,7 @@ export const Default: Story = {
           {...args}
           style={{ flex: 1, border: "1px solid red" }}
           initialSettings={{
-            searchProperties: ["name"],
+            searchProperties: ["name", "subject"],
           }}
         />
       </Container>
