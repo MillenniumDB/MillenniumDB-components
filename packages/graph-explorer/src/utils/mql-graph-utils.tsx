@@ -1,4 +1,4 @@
-import type { GraphEdge, GraphNode, Session } from "@millenniumdb/driver";
+import type { GraphNode, Session } from "@millenniumdb/driver";
 
 export type NameAndLabels = {
   labels: string[];

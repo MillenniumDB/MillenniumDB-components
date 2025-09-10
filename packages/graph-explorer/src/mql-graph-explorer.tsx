@@ -1,7 +1,7 @@
-import { forwardRef, useCallback, useImperativeHandle, useRef, type CSSProperties } from "react";
+import { useCallback, useRef, type CSSProperties } from "react";
 import { GraphExplorer } from "./graph-explorer";
-import { Driver, GraphNode, Result, Session } from "@millenniumdb/driver";
-import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
+import { Driver, Result, Session } from "@millenniumdb/driver";
+import { type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
