@@ -1,25 +1,5 @@
 import type { NodeId } from "../types/graph";
 
-export const getOutgoingWithNameAndLabelsMQL = (nodeId: string, properties: string[]): string => {
-  const names = properties.map((prop) => `?target.${prop}`).join(",");
-  return `LET ?node = ${nodeId}
-MATCH (?node)-[?edge :?type]->(?target)
-RETURN ?edge, ?type, ?target, LABELS(?target) AS ?labels, ${names}`;
-};
-
-export const getIncomingWithNameAndLabelsMQL = (nodeId: string, properties: string[]): string => {
-  let names = properties.map((prop) => `?source.${prop}`).join(",");
-  return `LET ?node = ${nodeId}
-MATCH (?source)-[?edge :?type]->(?node)
-RETURN ?edge, ?type, ?source, LABELS(?source) AS ?labels ${names.length ? "," + names : ""}`;
-};
-
-export const getNameAndLabelsQueryMQL = (nodeId: string, properties: string[]): string => {
-  const names = properties.map((prop) => `?node.${prop}`).join(",");
-  return `LET ?node = ${nodeId}
-RETURN LABELS(?node) AS ?labels ${names.length ? "," + names : ""}`;
-};
-
 export const getFetchNodesQueryMQL = (query: string, properties: string[], limit: number = 50): string => {
   const orConditions = properties.map((prop) => `REGEX(STR(?node.${prop}),"(^|\\s)(${query}).*","i")`).join(" OR ");
   const whereStatement = orConditions.length > 0 ? `WHERE ${orConditions}` : "";
