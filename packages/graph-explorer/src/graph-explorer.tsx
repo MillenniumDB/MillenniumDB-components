@@ -344,6 +344,15 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           const t = 0.5;
           bx = (1 - t) ** 2 * source.x + 2 * (1 - t) * t * cx + t ** 2 * source.x;
           by = (1 - t) ** 2 * source.y + 2 * (1 - t) * t * cy + t ** 2 * source.y;
+        } else if (curvature === 0) {
+          // optimization: straight link
+
+          bx = (source.x + target.x) / 2;
+          by = (source.y + target.y) / 2;
+
+          const dx = target.x - source.x;
+          const dy = target.y - source.y;
+          textAngle = Math.atan2(dy, dx);
         } else {
           // other links
 
@@ -369,11 +378,11 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           const dxdt = 2 * (1 - t) * (cx - source.x) + 2 * t * (target.x - cx);
           const dydt = 2 * (1 - t) * (cy - source.y) + 2 * t * (target.y - cy);
           textAngle = Math.atan2(dydt, dxdt);
+        }
 
-          if (textAngle > Math.PI / 2 || textAngle < -Math.PI / 2) {
-            // adjust angle to be always left-right/top-down
-            textAngle += Math.PI;
-          }
+        if (textAngle > Math.PI / 2 || textAngle < -Math.PI / 2) {
+          // adjust angle to be always left-right/top-down
+          textAngle += Math.PI;
         }
 
         ctx.translate(bx, by);
