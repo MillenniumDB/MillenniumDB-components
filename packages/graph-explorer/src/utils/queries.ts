@@ -1,23 +1,23 @@
 import type { NodeId } from "../types/graph";
 
-export const getOutgoingWithDescriptionMQL = (nodeId: string, properties: string[]): string => {
+export const getOutgoingWithNameAndLabelsMQL = (nodeId: string, properties: string[]): string => {
   const names = properties.map((prop) => `?target.${prop}`).join(",");
   return `LET ?node = ${nodeId}
 MATCH (?node)-[?edge :?type]->(?target)
 RETURN ?edge, ?type, ?target, LABELS(?target) AS ?labels, ${names}`;
 };
 
-export const getIncomingWithDescriptionMQL = (nodeId: string, properties: string[]): string => {
-  const names = properties.map((prop) => `?source.${prop}`).join(",");
+export const getIncomingWithNameAndLabelsMQL = (nodeId: string, properties: string[]): string => {
+  let names = properties.map((prop) => `?source.${prop}`).join(",");
   return `LET ?node = ${nodeId}
 MATCH (?source)-[?edge :?type]->(?node)
-RETURN ?edge, ?type, ?source, LABELS(?source) AS ?labels, ${names}`;
+RETURN ?edge, ?type, ?source, LABELS(?source) AS ?labels ${names.length ? "," + names : ""}`;
 };
 
 export const getNameAndLabelsQueryMQL = (nodeId: string, properties: string[]): string => {
   const names = properties.map((prop) => `?node.${prop}`).join(",");
   return `LET ?node = ${nodeId}
-RETURN ${names}, LABELS(${nodeId}) AS ?labels`;
+RETURN LABELS(?node) AS ?labels ${names.length ? "," + names : ""}`;
 };
 
 export const getFetchNodesQueryMQL = (query: string, properties: string[], limit: number = 50): string => {
@@ -30,7 +30,7 @@ LIMIT ${limit}`;
 };
 
 export const getDescribeQuery = (nodeId: NodeId): string => {
-  return `DESCRIBE ${nodeId}`;
+  return `DESCRIBE PROPERTIES LABELS ${nodeId}`;
 };
 
 export const getFetchNodesQueryRDF = (query: string, predicate: string[], limit: number = 50): string => {
@@ -38,6 +38,7 @@ export const getFetchNodesQueryRDF = (query: string, predicate: string[], limit:
   const orConditions = predicate
     .map((pred) => `(?predicate = ${pred} && REGEX(?str, "(^|\\\\s)(${query}).*", "i"))`)
     .join("||");
+
   const filterStatement = orConditions.length > 0 ? `FILTER (${orConditions})` : "";
 
   return `SELECT ?subject ?predicate ?object

@@ -5,7 +5,12 @@ import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
-import { getFetchNodesQueryMQL, getIncomingWithDescriptionMQL, getOutgoingWithDescriptionMQL } from "./utils/queries";
+import {
+  getFetchNodesQueryMQL,
+  getIncomingWithNameAndLabelsMQL,
+  getNameAndLabelsQueryMQL,
+  getOutgoingWithNameAndLabelsMQL,
+} from "./utils/queries";
 import type { GraphColorConfig } from "./hooks/use-graph-colors";
 import { MQLSideBarContent } from "./components/side-bar/mql-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
@@ -36,7 +41,7 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
         session = driver.session();
 
         if (outgoing) {
-          const query = getOutgoingWithDescriptionMQL(node.id, settings.searchProperties);
+          const query = getOutgoingWithNameAndLabelsMQL(node.id, settings.searchProperties);
           const result = session.run(query);
           const records = await result.records();
           for (const record of records) {
@@ -63,7 +68,7 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
             graphAPI.current.addLink({ id: edgeId, name: `${type}`, source: node.id, target: target.id });
           }
         } else {
-          const query = getIncomingWithDescriptionMQL(node.id, settings.searchProperties);
+          const query = getIncomingWithNameAndLabelsMQL(node.id, settings.searchProperties);
           const result = session.run(query);
           const records = await result.records();
           for (const record of records) {
@@ -102,20 +107,34 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
 
   const handleSearchSelection = useCallback(async (node: MDBGraphNode, settings: GraphSettings) => {
     if (!graphAPI.current) return;
-    const properties = settings.searchProperties;
     let session;
 
     try {
       session = driver.session();
-      const nodeDescription = await getNodeDescription(node.id, properties, session);
-      if (!nodeDescription) {
-        graphAPI.current.addNode(node);
-        return;
+
+      const query = getNameAndLabelsQueryMQL(node.id, settings.searchProperties);
+      const result = session.run(query);
+      const records = await result.records();
+
+      if (!records.length) return;
+
+      const record = records[0];
+      const labels = record.get("labels") ?? [];
+
+      let name = `${node}`;
+      for (const prop of settings.searchProperties) {
+        const key = `node.${prop}`;
+        const value = record.get(key);
+        if (value !== null) {
+          name = `${value}`;
+          break;
+        }
       }
+
       graphAPI.current.addNode({
         ...node,
-        name: nodeDescription.name,
-        types: nodeDescription.labels,
+        name,
+        types: labels.map((node: GraphNode) => `${node}`),
       });
     } catch (error) {
       console.error("Error in handleSearchSelection:", error);
