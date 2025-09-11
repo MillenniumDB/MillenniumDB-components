@@ -8,14 +8,14 @@ import type { GraphSettings } from "../settings/settings";
 
 export type FetchNodesItem = {
   category: string;
-  node: MDBGraphNode;
-  value: string;
+  id: string;
+  name: string;
 };
 
 export type NodeSearchProps = {
   fetchNodes?: ((query: string, properties: string[]) => Promise<FetchNodesItem[]>) | undefined;
   abortFetchNodes?: (() => Promise<void>) | undefined;
-  onSearchSelection?: ((node: MDBGraphNode, settings: GraphSettings) => Promise<void>) | undefined;
+  onSearchSelection?: ((nodeId: string, settings: GraphSettings) => Promise<void>) | undefined;
   settings: GraphSettings;
 };
 
@@ -32,9 +32,9 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, set
   });
 
   const handleOptionsSubmit = (nodeId: string) => {
-    const selectedItem = data.find((item) => item.node.id === nodeId);
+    const selectedItem = data.find(({id}) => id === nodeId);
     if (selectedItem) {
-      onSearchSelection?.(selectedItem.node, settings);
+      onSearchSelection?.(selectedItem.id, settings);
       setValue("");
       setData([]);
     }
@@ -106,26 +106,29 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, set
     }
   }, [debouncedQuery]);
 
-  const groupedData = data.reduce<Record<string, { node: MDBGraphNode; value: string }[]>>((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push({
-      node: item.node,
-      value: item.value,
-    });
-    return acc;
-  }, {});
+  const groupedData = data.reduce<Record<string, { id: string; name: string }[]>>(
+    (acc, { id, name, category }) => {
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push({
+        id,
+        name,
+      });
+      return acc;
+    },
+    {}
+  );
 
   const options = Object.entries(groupedData).map(([category, items], categoryIdx) => (
     <Combobox.Group key={categoryIdx} label={category}>
-      {items.map(({ node, value }, nodeIdx) => (
-        <Combobox.Option key={nodeIdx} value={node.id}>
+      {items.map(({ id, name }, nodeIdx) => (
+        <Combobox.Option key={nodeIdx} value={id}>
           <Text size="sm" fw={500}>
-            {value}
+            {name}
           </Text>
           <Text size="xs" c="dimmed">
-            {node.id}
+            {id}
           </Text>
         </Combobox.Option>
       ))}

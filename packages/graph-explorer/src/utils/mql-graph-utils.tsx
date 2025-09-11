@@ -56,7 +56,7 @@ export const getLinksNameAndLabels = async (
   properties: string[],
   outgoing: boolean
 ): Promise<LinkNameAndLabels[]> => {
-  const names = properties.map((prop) => `?target.${prop}`).join(",");
+  const names = properties.map((prop) => `?other.${prop}`).join(",");
 
   let query;
   if (outgoing) {
@@ -84,7 +84,7 @@ RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels, ${names}`;
 
     let name = otherId;
     for (const property of properties) {
-      const value = record.get(`node.${property}`);
+      const value = record.get(`other.${property}`);
       if (value !== null) {
         name = value;
         break;
@@ -96,6 +96,57 @@ RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels, ${names}`;
       edgeId,
       type,
       labels,
+      name,
+    };
+  });
+};
+
+export type TextSearchItem = {
+  category: string;
+  id: string;
+  name: string;
+};
+
+export const textSearchNodes = async (
+  session: Session,
+  text: string,
+  properties: string[],
+  limit: number
+): Promise<TextSearchItem[]> => {
+  let letStatement = "";
+  let filterStatement = "WHERE ";
+  for (const property of properties) {
+    const rgxVar = `?hasMatch_${property}`;
+    letStatement += `LET ${rgxVar} = REGEX(STR(?node.${property}),"(^|\\s)(${text}).*","i")\n`;
+    filterStatement += `${rgxVar} OR `;
+  }
+  filterStatement += `REGEX(STR(?node), "^(${text}).*","i")`;
+
+  const query = `MATCH (?node)
+${letStatement}
+${filterStatement}
+RETURN *
+LIMIT ${limit}`;
+
+  const result = session.run(query);
+  const records = await result.records();
+
+  return records.map((record) => {
+    const nodeId = record.get("node").toString();
+    let name = nodeId;
+    let category = "";
+    for (const property of properties) {
+      const hasMatch = record.get(`hasMatch_${property}`);
+      if (hasMatch) {
+        name = record.get(`node.${property}`);
+        category = property;
+        break;
+      }
+    }
+
+    return {
+      category: category.length === 0 ? "id" : category,
+      id: nodeId,
       name,
     };
   });

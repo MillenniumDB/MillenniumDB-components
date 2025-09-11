@@ -11,7 +11,7 @@ import { MQLSideBarContent } from "./components/side-bar/mql-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
 import { getNodeDescription } from "./utils/node-utils";
 import { MQLSettingsContent } from "./components/settings/mql-settings-content";
-import { getLinksNameAndLabels, getNameAndLabels } from "./utils/mql-graph-utils";
+import { getLinksNameAndLabels, getNameAndLabels, textSearchNodes } from "./utils/mql-graph-utils";
 
 export type MQLGraphExplorerProps = {
   driver: Driver;
@@ -66,16 +66,16 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     []
   );
 
-  const handleSearchSelection = useCallback(async (node: MDBGraphNode, settings: GraphSettings) => {
+  const handleSearchSelection = useCallback(async (nodeId: string, settings: GraphSettings) => {
     if (!graphAPI.current) return;
 
     let session;
     try {
       session = driver.session();
 
-      const { name, labels } = await getNameAndLabels(session, node.id, settings.searchProperties);
+      const { name, labels } = await getNameAndLabels(session, nodeId, settings.searchProperties);
       graphAPI.current.addNode({
-        ...node,
+        id: nodeId,
         name,
         types: labels,
       });
@@ -88,36 +88,9 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
   }, []);
 
   const handleFetchNodes = useCallback(async (query: string, properties: string[]): Promise<FetchNodesItem[]> => {
-    if (!graphAPI.current) return [];
-
     try {
-      const fetchNodesQuery = getFetchNodesQueryMQL(query, properties);
       fetchNodesSessionRef.current = driver.session();
-      fetchNodesResultRef.current = fetchNodesSessionRef.current.run(fetchNodesQuery);
-      const records = await fetchNodesResultRef.current.records();
-      return records.map((record) => {
-        const node = record.get("node");
-        const graphNode: MDBGraphNode = {
-          id: node.id,
-          name: node.id,
-          types: [], // TODO: implement this
-        };
-        for (const property of properties) {
-          const value = record.get(`node.${property}`);
-          if (value !== null) {
-            return {
-              category: property,
-              node: graphNode,
-              value,
-            };
-          }
-        }
-        return {
-          category: "id",
-          node: graphNode,
-          value: node.id,
-        };
-      });
+      return await textSearchNodes(fetchNodesSessionRef.current, query, properties, 50);
     } catch (error) {
       console.error(error);
       return [];
