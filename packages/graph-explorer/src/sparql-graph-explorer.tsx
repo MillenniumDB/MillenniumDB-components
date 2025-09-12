@@ -1,4 +1,4 @@
-import type { Driver, Result, Session } from "@millenniumdb/driver";
+import type { Driver, Result, Session, Record as MDBRecord } from "@millenniumdb/driver";
 import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import { useCallback, useRef, type CSSProperties } from "react";
 import type { GraphSettings } from "./components/settings/settings";
@@ -43,12 +43,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
             const predicate = record.get("predicate");
             const object = record.get("object");
 
-            const iriDescription = await getIriDescription(
-              object,
-              settings.searchProperties,
-              settings.labelsPredicate,
-              session
-            );
+            const iriDescription = await getIriDescription(object.toString(), settings, session);
             if (iriDescription) {
               graphAPI.current.addNode({
                 id: `${object}`,
@@ -69,12 +64,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
             const subject = record.get("subject");
             const predicate = record.get("predicate");
 
-            const iriDescription = await getIriDescription(
-              subject,
-              settings.searchProperties,
-              settings.labelsPredicate,
-              session
-            );
+            const iriDescription = await getIriDescription(subject.toString(), settings, session);
             if (iriDescription) {
               graphAPI.current.addNode({
                 id: `${subject}`,
@@ -99,16 +89,17 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     []
   );
 
-  const handleFetchNodes = useCallback(async (query: string, properties: string[]): Promise<FetchNodesItem[]> => {
+  const handleFetchNodes = useCallback(async (query: string, settings: GraphSettings): Promise<FetchNodesItem[]> => {
     // TODO: Handle blank nodes?
     if (!graphAPI.current) return [];
 
+    const properties = settings.searchProperties ?? [];
     try {
       const fetchNodesQuery = getFetchNodesQueryRDF(query, properties);
       fetchNodesSessionRef.current = driver.session();
       fetchNodesResultRef.current = fetchNodesSessionRef.current.run(fetchNodesQuery);
       const records = await fetchNodesResultRef.current.records();
-      return records.map((record) => {
+      return records.map((record: MDBRecord) => {
         const subject = record.get("subject");
         const object = record.get("object");
         const graphNode: MDBGraphNode = {
@@ -147,12 +138,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
 
     try {
       session = driver.session();
-      const nodeDescription = await getIriDescription(
-        node.id,
-        settings.searchProperties,
-        settings.labelsPredicate,
-        session
-      );
+      const nodeDescription = await getIriDescription(node.id, settings, session);
       if (!nodeDescription) {
         graphAPI.current.addNode(node);
         return;
@@ -213,9 +199,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
           let session;
           try {
             session = driver.session();
-            const iriDescription = await getIriDescription(
-              id, settings.searchProperties, settings.labelsPredicate, session
-            );
+            const iriDescription = await getIriDescription(id, settings, session);
             if (!iriDescription) return null;
             return { id, name: iriDescription.name, types: iriDescription.labels };
           } catch (err) {

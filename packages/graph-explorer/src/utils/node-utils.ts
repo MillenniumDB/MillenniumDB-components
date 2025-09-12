@@ -1,6 +1,7 @@
-import { IRI, type Driver, type Session, Record as MDBRecord } from "@millenniumdb/driver";
+import { type Session, Record as MDBRecord } from "@millenniumdb/driver";
 import type { NodeId } from "../types/graph";
 import { getDescribeQuery, getIriLabelsQuery, getIriNameQuery, getLiteralStatementsQuery } from "./queries";
+import type { GraphSettings } from "../components/settings/settings";
 
 export type NodeDescription = {
   id: NodeId;
@@ -15,7 +16,7 @@ export type IRIDescription = {
   name: string;
   type: string;
   labels: string[];
-  literals: MDBRecord[];
+  literals: Record<string, any>;
 };
 
 export function valueToString(value: unknown): string | null {
@@ -116,23 +117,40 @@ export async function getNodeDescription(
   }
 }
 
+export function getIriPrefixName(iri: string, prefixMap: Record<string, string>): string {
+  const iriName = iri.toString().slice(1, -1);
+  for (const [prefix, namespace] of Object.entries(prefixMap)) {
+    if (iriName.startsWith(namespace)) {
+      return `${prefix}:${iriName.slice(namespace.length)}`;
+    }
+  }
+  return iri;
+}
+
 export async function getIriDescription(
   iri: string,
-  settingsProperties: string[],
-  labelsPredicate: string,
+  settings: GraphSettings,
   session: Session
 ): Promise<IRIDescription | null> {
+  const labelsPredicate = settings.labelsPredicate;
+  const settingsProperties = settings.searchProperties;
+  const prefixMap = settings.prefixes;
+
   try {
     // Literal statements
     let query = getLiteralStatementsQuery(iri);
 
     let result = session.run(query);
     let records = await result.records();
-    const literals = records;
+    const literals = records.reduce((acc: Record<string, any>, record: MDBRecord) => {
+      const property = record.get("p");
+      const value = record.get("o");
 
-    if (literals.length === 0) {
-      return null;
-    }
+      const key = getIriPrefixName(property, prefixMap);
+
+      acc[key] = value;
+      return acc;
+    }, {});
 
     // Node name
     query = getIriNameQuery(iri, settingsProperties);
@@ -156,7 +174,7 @@ export async function getIriDescription(
 
     return {
       iri,
-      name,
+      name: getIriPrefixName(name, prefixMap),
       type: "IRI",
       labels: labels ?? [],
       // TODO: Should entities be shown here too?

@@ -8,6 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 export type GraphSettings = {
   searchProperties: string[];
   labelsPredicate: string;
+  prefixes: Record<string, string>;
 };
 
 export type SettingsProps = {

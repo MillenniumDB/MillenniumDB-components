@@ -1,6 +1,6 @@
 import { useCallback, useRef, type CSSProperties } from "react";
 import { GraphExplorer } from "./graph-explorer";
-import { Driver, Result, Session } from "@millenniumdb/driver";
+import { Driver, Result, Session, Record as MDBRecord } from "@millenniumdb/driver";
 import { type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
@@ -87,15 +87,16 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     }
   }, []);
 
-  const handleFetchNodes = useCallback(async (query: string, properties: string[]): Promise<FetchNodesItem[]> => {
+  const handleFetchNodes = useCallback(async (query: string, settings: GraphSettings): Promise<FetchNodesItem[]> => {
     if (!graphAPI.current) return [];
 
+    const properties = settings.searchProperties ?? [];
     try {
       const fetchNodesQuery = getFetchNodesQueryMQL(query, properties);
       fetchNodesSessionRef.current = driver.session();
       fetchNodesResultRef.current = fetchNodesSessionRef.current.run(fetchNodesQuery);
       const records = await fetchNodesResultRef.current.records();
-      return records.map((record) => {
+      return records.map((record: MDBRecord) => {
         const node = record.get("node");
         const graphNode: MDBGraphNode = {
           id: node.id,

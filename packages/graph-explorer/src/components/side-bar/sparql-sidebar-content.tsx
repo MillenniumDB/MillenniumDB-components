@@ -35,12 +35,7 @@ export const SPARQLSideBarContent = ({
 
       try {
         const session = driver.session();
-        const iriDescription = await getIriDescription(
-          nodeId,
-          settings.searchProperties,
-          settings.labelsPredicate,
-          session
-        );
+        const iriDescription = await getIriDescription(nodeId, settings, session);
         setDescription(iriDescription);
       } catch (err) {
         setError(String(err));
@@ -58,7 +53,7 @@ export const SPARQLSideBarContent = ({
 
     const [nodeId] = [...selectedNodeIds];
     describeNode(nodeId);
-  }, [selectedNodeIds, settings.searchProperties, settings.labelsPredicate, driver]);
+  }, [selectedNodeIds, settings, driver]);
 
   if (selectedNodeIds.size === 0 && selectedLinkIds.size === 0) {
     return <Text p="sm">{"No selection"}</Text>;
@@ -83,6 +78,7 @@ export const SPARQLSideBarContent = ({
 
     if (error) {
       // TODO: More descriptive error?
+      console.error(error);
       return <Text p="sm">{"Error"}</Text>;
     }
 
@@ -114,18 +110,21 @@ export const SPARQLSideBarContent = ({
           <Title order={4} mb="xs">
             Literals
           </Title>
-          {(description.literals ?? []).map((record, idx) => {
-            return (
-              <Box key={idx} mb="xs">
-                <Title order={6} mb="xs">
-                  {String(record.get("p"))}
-                </Title>
-                <Code block mb="md">
-                  {String(record.get("o"))}
-                </Code>
-              </Box>
-            );
-          })}
+          {Object.keys(description.literals ?? {}).length === 0 && (
+            <Text c="dimmed" size="sm">
+              No literals found
+            </Text>
+          )}
+          {Object.entries(description.literals ?? {}).map(([property, value], idx) => (
+            <Box key={idx} mb="xs">
+              <Title order={6} mb="xs">
+                {property}
+              </Title>
+              <Code block mb="md">
+                {String(value)}
+              </Code>
+            </Box>
+          ))}
         </Box>
       </Box>
     );

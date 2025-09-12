@@ -46,7 +46,7 @@ export type GraphExplorerProps = {
     outgoing: boolean,
     settings: GraphSettings
   ) => void;
-  fetchNodes?: (query: string, properties: string[]) => Promise<FetchNodesItem[]>;
+  fetchNodes?: (query: string, settings: GraphSettings) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
   onSearchSelection?: (node: MDBGraphNode, settings: GraphSettings) => Promise<void>;
   renderSettingsContent?: (
@@ -70,7 +70,11 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       className = "",
       graphColors,
       initialGraphData,
-      initialSettings = { searchProperties: [], labelsPredicate: "" },
+      initialSettings = {
+        searchProperties: [],
+        labelsPredicate: "",
+        prefixes: {},
+      },
       onNodeExpand,
       fetchNodes,
       abortFetchNodes,

@@ -65,6 +65,7 @@ export const Default: Story = {
           initialSettings={{
             searchProperties: ["<http://example.com/subject>"],
             labelsPredicate: "<http://example.com/subject>",
+            prefixes: { ex: "http://example.com/" }
           }}
         />
       </Container>

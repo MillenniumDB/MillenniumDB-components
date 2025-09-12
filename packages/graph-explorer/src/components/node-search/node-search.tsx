@@ -13,7 +13,7 @@ export type FetchNodesItem = {
 };
 
 export type NodeSearchProps = {
-  fetchNodes?: ((query: string, properties: string[]) => Promise<FetchNodesItem[]>) | undefined;
+  fetchNodes?: ((query: string, settings: GraphSettings) => Promise<FetchNodesItem[]>) | undefined;
   abortFetchNodes?: (() => Promise<void>) | undefined;
   onSearchSelection?: ((node: MDBGraphNode, settings: GraphSettings) => Promise<void>) | undefined;
   settings: GraphSettings;
@@ -53,7 +53,7 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, set
 
     setLoading(true);
     try {
-      const result = await fetchNodes(query, settings.searchProperties ?? []);
+      const result = await fetchNodes(query, settings);
       setData(result);
     } catch (error) {
       console.error(error);
