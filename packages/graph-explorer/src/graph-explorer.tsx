@@ -48,7 +48,7 @@ export type GraphExplorerProps = {
   ) => void;
   fetchNodes?: (query: string, settings: GraphSettings) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
-  onSearchSelection?: (node: MDBGraphNode, settings: GraphSettings) => Promise<void>;
+  onSearchSelection?: (nodeId: string, settings: GraphSettings) => Promise<void>;
   renderSettingsContent?: (
     settings: GraphSettings,
     onSave: (newSettings: GraphSettings) => void,
