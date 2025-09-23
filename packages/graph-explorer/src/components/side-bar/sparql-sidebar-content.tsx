@@ -4,7 +4,7 @@ import type { GraphAPI } from "../../hooks/use-graph-api";
 import type { Driver } from "@millenniumdb/driver";
 import type { GraphSettings } from "../settings/settings";
 import { useEffect, useState } from "react";
-import { getIriDescription, type IRIDescription } from "../../utils/node-utils";
+import { getIriDescription, type IriDescription } from "../../utils/sparql-graph-utils";
 
 type SPARQLSideBarContentProps = {
   selectedNodeIds: Set<NodeId>;
@@ -23,7 +23,7 @@ export const SPARQLSideBarContent = ({
   graphAPI,
   driver,
 }: SPARQLSideBarContentProps) => {
-  const [description, setDescription] = useState<IRIDescription | null>(null);
+  const [description, setDescription] = useState<IriDescription | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +35,7 @@ export const SPARQLSideBarContent = ({
 
       try {
         const session = driver.session();
-        const iriDescription = await getIriDescription(nodeId, settings, session);
+        const iriDescription = await getIriDescription(session, nodeId, settings.searchProperties, settings.labelsPredicate);
         setDescription(iriDescription);
       } catch (err) {
         setError(String(err));

@@ -6,11 +6,11 @@ import type { GraphColorConfig } from "./hooks/use-graph-colors";
 import { GraphExplorer } from "./graph-explorer";
 import type { GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
-import { getFetchNodesQueryRDF } from "./utils/queries";
 import type { FetchNodesItem } from "./components/node-search/node-search";
 import { SPARQLSideBarContent } from "./components/side-bar/sparql-sidebar-content";
 import { getIriDescription } from "./utils/node-utils";
 import { SPARQLSettingsContent } from "./components/settings/sparql-settings-content";
+import { getLinksAndNeighbors, getNameAndLabels, textSearchNodes } from "./utils/sparql-graph-utils";
 
 export type SPARQLGraphExplorerProps = {
   driver: Driver;
@@ -29,56 +29,38 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
 
   const handleNodeExpand = useCallback(
     async (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean, settings: GraphSettings) => {
-      // TODO: Handle blank nodes?
       if (!graphAPI.current) return;
       let session;
 
       try {
         session = driver.session();
 
-        if (outgoing) {
-          const result = session.run(`SELECT * WHERE { ${node.id} ?predicate ?object . FILTER(ISIRI(?object)) . }`);
-          const records = await result.records();
-          for (const record of records) {
-            const predicate = record.get("predicate");
-            const object = record.get("object");
+        const linksAndNeighbors = await getLinksAndNeighbors(
+          session,
+          node.id,
+          settings.searchProperties,
+          settings.labelsPredicate,
+          outgoing
+        );
+        for (const linkAndNeighbor of linksAndNeighbors) {
+          const { neighborId, edgeId, edgeName, neighborLabels, neighborName } = linkAndNeighbor;
+          graphAPI.current.addNode({
+            id: neighborId,
+            name: neighborName,
+            types: neighborLabels,
+          });
 
-            const iriDescription = await getIriDescription(object.toString(), settings, session);
-            if (iriDescription) {
-              graphAPI.current.addNode({
-                id: `${object}`,
-                name: iriDescription.name,
-                types: iriDescription.labels,
-              });
-            } else {
-              graphAPI.current.addNode({ id: `${object}`, name: `${object}` });
-            }
+          const source = outgoing ? node.id : neighborId;
+          const target = outgoing ? neighborId : node.id;
 
-            const id = `${node.id}-${predicate}-${object}`;
-            graphAPI.current.addLink({ id, name: `${predicate}`, source: `${node.id}`, target: `${object}` });
-          }
-        } else {
-          const result = session.run(`SELECT * WHERE { ?subject ?predicate ${node.id} . }`);
-          const records = await result.records();
-          for (const record of records) {
-            const subject = record.get("subject");
-            const predicate = record.get("predicate");
-
-            const iriDescription = await getIriDescription(subject.toString(), settings, session);
-            if (iriDescription) {
-              graphAPI.current.addNode({
-                id: `${subject}`,
-                name: iriDescription.name,
-                types: iriDescription.labels,
-              });
-            } else {
-              graphAPI.current.addNode({ id: `${subject}`, name: `${subject}` });
-            }
-
-            const id = `${subject}-${predicate}-${node.id}`;
-            graphAPI.current.addLink({ id, name: `${predicate}`, source: `${subject}`, target: `${node.id}` });
-          }
+          graphAPI.current.addLink({
+            id: edgeId,
+            name: edgeName,
+            source,
+            target,
+          });
         }
+
         graphAPI.current.update();
       } catch (err) {
         console.error(err);
@@ -91,28 +73,9 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
 
   const handleFetchNodes = useCallback(async (query: string, settings: GraphSettings): Promise<FetchNodesItem[]> => {
     // TODO: Handle blank nodes?
-    if (!graphAPI.current) return [];
-
-    const properties = settings.searchProperties ?? [];
     try {
-      const fetchNodesQuery = getFetchNodesQueryRDF(query, properties);
       fetchNodesSessionRef.current = driver.session();
-      fetchNodesResultRef.current = fetchNodesSessionRef.current.run(fetchNodesQuery);
-      const records = await fetchNodesResultRef.current.records();
-      return records.map((record: MDBRecord) => {
-        const subject = record.get("subject");
-        const object = record.get("object");
-        const graphNode: MDBGraphNode = {
-          id: `${subject}`,
-          name: `${subject}`,
-          types: [], // TODO: implement this
-        };
-        return {
-          category: "id",
-          node: graphNode,
-          value: `${object}`,
-        };
-      });
+      return await textSearchNodes(fetchNodesSessionRef.current, query, settings.searchProperties, 50);
     } catch (error) {
       console.error(error);
       return [];
@@ -131,26 +94,21 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     }
   }, []);
 
-  const handleSearchSelection = useCallback(async (node: MDBGraphNode, settings: GraphSettings) => {
+  const handleSearchSelection = useCallback(async (iri: string, settings: GraphSettings) => {
     if (!graphAPI.current) return;
-
+    
     let session;
-
     try {
       session = driver.session();
-      const nodeDescription = await getIriDescription(node.id, settings, session);
-      if (!nodeDescription) {
-        graphAPI.current.addNode(node);
-        return;
-      }
+
+      const { name, labels } = await getNameAndLabels(session, iri, settings.searchProperties, settings.labelsPredicate);
       graphAPI.current.addNode({
-        ...node,
-        name: nodeDescription.name,
-        types: nodeDescription.labels,
+        id: iri,
+        name,
+        types: labels,
       });
     } catch (error) {
       console.error("Error in handleSearchSelection:", error);
-      graphAPI.current.addNode(node);
     } finally {
       graphAPI.current.update();
       session?.close();
