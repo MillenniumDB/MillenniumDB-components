@@ -63,8 +63,9 @@ export const Default: Story = {
           {...args}
           style={{ flex: 1, border: "1px solid red" }}
           initialSettings={{
-            searchProperties: ["<http://example.com/subject>"],
-            labelsPredicate: "<http://example.com/subject>",
+            nameKeys: ["<http://example.com/subject>"],
+            searchKeys: ["<http://example.com/subject>"],
+            labelsKey: "<http://example.com/subject>",
             prefixes: { ex: "http://example.com/" }
           }}
         />

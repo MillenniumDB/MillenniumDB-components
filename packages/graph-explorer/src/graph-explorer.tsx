@@ -71,8 +71,9 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       graphColors,
       initialGraphData,
       initialSettings = {
-        searchProperties: [],
-        labelsPredicate: "",
+        nameKeys: [],
+        searchKeys: [],
+        labelsKey: "",
         prefixes: {},
       },
       onNodeExpand,

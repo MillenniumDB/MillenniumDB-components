@@ -36,7 +36,7 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
       try {
         session = driver.session();
 
-        const linksNameAndLabels = await getLinksNameAndLabels(session, node.id, settings.searchProperties, outgoing);
+        const linksNameAndLabels = await getLinksNameAndLabels(session, node.id, settings.nameKeys, outgoing);
         for (const linkNameAndLabels of linksNameAndLabels) {
           const { otherId, edgeId, type, labels, name } = linkNameAndLabels;
           graphAPI.current.addNode({
@@ -73,7 +73,7 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     try {
       session = driver.session();
 
-      const { name, labels } = await getNameAndLabels(session, nodeId, settings.searchProperties);
+      const { name, labels } = await getNameAndLabels(session, nodeId, settings.nameKeys);
       graphAPI.current.addNode({
         id: nodeId,
         name,
@@ -87,10 +87,10 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     }
   }, []);
 
-  const handleFetchNodes = useCallback(async (query: string, properties: string[]): Promise<FetchNodesItem[]> => {
+  const handleFetchNodes = useCallback(async (query: string, settings: GraphSettings): Promise<FetchNodesItem[]> => {
     try {
       fetchNodesSessionRef.current = driver.session();
-      return await textSearchNodes(fetchNodesSessionRef.current, query, properties, 50);
+      return await textSearchNodes(fetchNodesSessionRef.current, query, settings.searchKeys, 50);
     } catch (error) {
       console.error(error);
       return [];
@@ -119,7 +119,7 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
           let session;
           try {
             session = driver.session();
-            const nodeDescription = await getNodeDescription(id, settings.searchProperties, session);
+            const nodeDescription = await getNodeDescription(id, settings.nameKeys, session);
             if (!nodeDescription) return null;
             return { id, name: nodeDescription.name, types: nodeDescription.labels };
           } catch (err) {

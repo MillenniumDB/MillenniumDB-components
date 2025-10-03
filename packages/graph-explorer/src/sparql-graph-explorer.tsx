@@ -38,8 +38,8 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
         const linksAndNeighbors = await getLinksAndNeighbors(
           session,
           node.id,
-          settings.searchProperties,
-          settings.labelsPredicate,
+          settings.nameKeys,
+          settings.labelsKey!,
           outgoing
         );
         for (const linkAndNeighbor of linksAndNeighbors) {
@@ -75,7 +75,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     // TODO: Handle blank nodes?
     try {
       fetchNodesSessionRef.current = driver.session();
-      return await textSearchNodes(fetchNodesSessionRef.current, query, settings.searchProperties, 50);
+      return await textSearchNodes(fetchNodesSessionRef.current, query, settings.searchKeys, 50);
     } catch (error) {
       console.error(error);
       return [];
@@ -101,7 +101,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     try {
       session = driver.session();
 
-      const { name, labels } = await getNameAndLabels(session, iri, settings.searchProperties, settings.labelsPredicate);
+      const { name, labels } = await getNameAndLabels(session, iri, settings.searchKeys, settings.labelsKey!);
       graphAPI.current.addNode({
         id: iri,
         name,

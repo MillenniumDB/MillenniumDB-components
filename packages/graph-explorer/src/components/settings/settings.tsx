@@ -6,9 +6,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState, type ReactNode } from "react";
 
 export type GraphSettings = {
-  searchProperties: string[];
-  labelsPredicate: string;
-  prefixes: Record<string, string>;
+  nameKeys: string[];
+  searchKeys: string[];
+  labelsKey?: string;
+  prefixes?: Record<string, string>;
 };
 
 export type SettingsProps = {

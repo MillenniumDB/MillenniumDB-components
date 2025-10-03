@@ -35,7 +35,8 @@ export const SPARQLSideBarContent = ({
 
       try {
         const session = driver.session();
-        const iriDescription = await getIriDescription(session, nodeId, settings.searchProperties, settings.labelsPredicate);
+        const labelsProperty = settings.labelsKey ?? "";
+        const iriDescription = await getIriDescription(session, nodeId, settings.nameKeys, labelsProperty);
         setDescription(iriDescription);
       } catch (err) {
         setError(String(err));
