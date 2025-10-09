@@ -40,6 +40,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
           node.id,
           settings.nameKeys,
           settings.labelsKey!,
+          settings.prefixes,
           outgoing
         );
         for (const linkAndNeighbor of linksAndNeighbors) {
@@ -101,7 +102,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     try {
       session = driver.session();
 
-      const { name, labels } = await getNameAndLabels(session, iri, settings.searchKeys, settings.labelsKey!);
+      const { name, labels } = await getNameAndLabels(session, iri, settings.nameKeys, settings.labelsKey!, settings.prefixes);
       graphAPI.current.addNode({
         id: iri,
         name,

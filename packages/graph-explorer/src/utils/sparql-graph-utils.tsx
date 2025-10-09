@@ -1,19 +1,31 @@
 import { IRI, type Session } from "@millenniumdb/driver";
-import { getFetchNodesQueryRDF } from "./queries";
+
+export const getPrefixedIri = (iri: string, prefixMap: Record<string, string>): string => {
+  const iriName = iri.toString().slice(1, -1);
+  for (const [prefix, namespace] of Object.entries(prefixMap)) {
+    if (iriName.startsWith(namespace)) {
+      return `${prefix}:${iriName.slice(namespace.length)}`;
+    }
+  }
+  return iri;
+}
 
 export const getNameAndLabelsFromRecords = (
+  iri: string,
   records: any[],
   namePredicates: string[],
   labelsPredicate: string,
+  prefixes: Record<string, string> = {},
   varKeys: Partial<{ predicate: string; object: string }> = {}
-): {  name: string | null; labels: string[] } => {
+): {  name: string; labels: string[] } => {
   const {
     predicate: predKey = "p",
     object: objKey = "o",
   } = varKeys;
 
   if (records.length === 0) {
-    return { name: null, labels: [] };
+    const name = getPrefixedIri(iri, prefixes)
+    return { name, labels: [] };
   }
 
   const firstByPredicate = new Map<string, string>();
@@ -31,7 +43,7 @@ export const getNameAndLabelsFromRecords = (
     }
   }
 
-  let name = null;
+  let name = iri;
   for (const predicate of namePredicates) {
     const value = firstByPredicate.get(predicate);
     if (value != null && value !== "") {
@@ -39,6 +51,7 @@ export const getNameAndLabelsFromRecords = (
       break;
     }
   }
+  name = getPrefixedIri(name, prefixes);
   return { name, labels };
 };
 
@@ -51,22 +64,15 @@ export const getNameAndLabels = async (
   session: Session,
   iri: string,
   namePredicates: string[],
-  labelsPredicate: string
+  labelsPredicate: string,
+  prefixes: Record<string, string> = {}
 ): Promise<NameAndLabels> => {
   const query = `SELECT ?p ?o WHERE { ${iri} ?p ?o . }`;
   const result = session.run(query);
   const records = await result.records();
 
-  const { name, labels } = getNameAndLabelsFromRecords(records, namePredicates, labelsPredicate);
-  return { name: name ?? iri, labels };
-};
-
-export type LinkAndNeighbor = {
-  neighborId: string;
-  edgeId: string;
-  edgeName: string;
-  neighborLabels: string[];
-  neighborName: string;
+  const { name, labels } = getNameAndLabelsFromRecords(iri, records, namePredicates, labelsPredicate, prefixes);
+  return { name, labels };
 };
 
 export type IriDescription = {
@@ -81,7 +87,8 @@ export const getIriDescription = async (
   session: Session,
   iri: string,
   namePredicates: string[],
-  labelsPredicate: string
+  labelsPredicate: string,
+  prefixMap: Record<string, string> = {}
 ): Promise<IriDescription | null> => {
   const query = `SELECT ?p ?o WHERE { ${iri} ?p ?o . }`;
   const result = session.run(query);
@@ -89,6 +96,7 @@ export const getIriDescription = async (
 
   const literals = records.reduce((acc: Record<string, any>, record: any) => {
     const predicate = record.get("p").toString();
+    // const prefixedPredicate 
     const object = record.get("o");
     if (object instanceof IRI) {
       return acc;
@@ -97,8 +105,16 @@ export const getIriDescription = async (
     return acc;
   }, {});
 
-  const { name, labels } = getNameAndLabelsFromRecords(records, namePredicates, labelsPredicate);
-  return { iri, name: name ?? iri, type: "IRI", labels, literals };
+  const { name, labels } = getNameAndLabelsFromRecords(iri, records, namePredicates, labelsPredicate, prefixMap);
+  return { iri, name, type: "IRI", labels, literals };
+};
+
+export type LinkAndNeighbor = {
+  neighborId: string;
+  edgeId: string;
+  edgeName: string;
+  neighborLabels: string[];
+  neighborName: string;
 };
 
 export const getLinksAndNeighbors = async (
@@ -106,27 +122,32 @@ export const getLinksAndNeighbors = async (
   iri: string,
   namePredicates: string[],
   labelsPredicate: string,
+  prefixes: Record<string, string> = {},
   outgoing: boolean,
 ): Promise<LinkAndNeighbor[]> => {
   // TODO: Handle blank nodes?
   let query;
   if (outgoing) {
-    query = `SELECT ?predicate ?neighbor ?neighborPredicate ?neighborObject
-WHERE {
-  ${iri} ?predicate ?neighbor .
-  FILTER(isIRI(?neighbor))
-  OPTIONAL {
-    ?neighbor ?neighborPredicate ?neighborObject .
-  }
-}`;
+    query = `
+      SELECT ?predicate ?neighbor ?neighborPredicate ?neighborObject
+      WHERE {
+        ${iri} ?predicate ?neighbor .
+        FILTER(isIRI(?neighbor))
+        OPTIONAL {
+          ?neighbor ?neighborPredicate ?neighborObject .
+        }
+      }
+    `;
   } else {
-    query = `SELECT ?predicate ?neighbor ?neighborPredicate ?neighborObject
-WHERE {
-  ?neighbor ?predicate ${iri} .
-  OPTIONAL {
-    ?neighbor ?neighborPredicate ?neighborObject .
-  }
-}`;
+    query = `
+      SELECT ?predicate ?neighbor ?neighborPredicate ?neighborObject
+      WHERE {
+        ?neighbor ?predicate ${iri} .
+        OPTIONAL {
+          ?neighbor ?neighborPredicate ?neighborObject .
+        }
+      }
+    `;
   }
 
   const result = session.run(query);
@@ -147,19 +168,21 @@ WHERE {
 
     const edgeIri = firstRecord.get("predicate").toString();
     const edgeId = `${outgoing ? iri : neighborId}-${edgeIri}-${outgoing ? neighborId : iri}`;
-    const edgeName = edgeIri;
+    const edgeName = getPrefixedIri(edgeIri, prefixes);
 
-    let neighborName = neighborId;
+    let neighborName = getPrefixedIri(neighborId, prefixes);
     let neighborLabels: string[] = [];
 
     if (firstRecord.get("neighborObject") != null) {
       const { name, labels } = getNameAndLabelsFromRecords(
+        neighborId,
         records,
         namePredicates,
         labelsPredicate,
+        prefixes,
         { predicate: "neighborPredicate", object: "neighborObject" }
       );
-      neighborName = name ?? neighborId;
+      neighborName = name;
       neighborLabels = labels;
     }
 
@@ -181,52 +204,43 @@ export type TextSearchItem = {
   name: string;
 };
 
-export const textSearchNodes = async (session: Session, text: string, predicates: string[], limit: number = 50) => {
-  // TODO: Include subject regex search by IRI
-  let bindStatement = "";
-  let filterStatement = "FILTER(";
+export const textSearchNodes = async (session: Session, text: string, searchPredicates: string[], limit: number = 50) => {
+  const valuesStatement = `VALUES ?predicate { ${searchPredicates.join(" ")} }`;
 
-  for (let i = 0; i < predicates.length; ++i) {
-    const rgxVar = `?hasMatch_${i}`;
-    bindStatement += `BIND(REGEX(STR(?object), R"(^|\\s)(${text})","i") AS ${rgxVar})\n`;
-    filterStatement += `(${rgxVar} && ?predicate = ${predicates[i]})`;
-    if (i === predicates.length - 1) {
-      filterStatement += `)`;
-    } else {
-      filterStatement += ` || `;
+  let query = `
+    SELECT ?subject ?predicate ?object
+    WHERE {
+      {
+        ${valuesStatement}
+        ?subject ?predicate ?object .
+        FILTER(REGEX(STR(?object), R"(^|\\s)(${text})", "i"))
+      }
+      UNION
+      {
+        {
+          SELECT DISTINCT ?subject
+          WHERE {
+            ?subject ?p ?o .
+            FILTER(REGEX(STR(?subject), R"(${text})", "i"))
+          }
+        }
+        BIND("IRI" AS ?predicate)
+        BIND(?subject AS ?object)
+      }
     }
-  }
-  // filterStatement += `REGEX(STR(?subject), R"(${text})", "i"))`;
-
-  let query = `SELECT *
-WHERE {
-  ?subject ?predicate ?object .
-  ${bindStatement} .
-  ${filterStatement} .
-}
-LIMIT ${limit}`;
-
-  console.log(query);
+    LIMIT ${limit}
+  `;
 
   const result = session.run(query);
-
   const records = await result.records();
 
   return records.map((record: any) => {
     const subjectId = record.get("subject").toString();
-    let name = subjectId;
-    let category = "";
-    for (let i = 0; i < predicates.length; ++i) {
-      const hasMatch = record.get(`hasMatch_${i}`);
-      if (hasMatch) {
-        name = record.get(`object`); // should be string already
-        category = predicates[i];
-        break;
-      }
-    }
+    const name = record.get("object").toString();
+    const category = record.get("predicate").toString();
 
     return {
-      category: category.length === 0 ? "id" : category,
+      category,
       id: subjectId,
       name,
     };
