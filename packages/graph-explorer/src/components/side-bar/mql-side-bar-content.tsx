@@ -43,7 +43,7 @@ export const MQLSideBarContent = ({
 
       try {
         const session = driver.session();
-        const nodeDescription = await getNodeDescription(nodeId, settings.searchProperties, session);
+        const nodeDescription = await getNodeDescription(nodeId, settings.nameKeys, session);
         setDescription(nodeDescription);
       } catch (err) {
         setError(String(err));
@@ -61,7 +61,7 @@ export const MQLSideBarContent = ({
 
     const [nodeId] = [...selectedNodeIds];
     describeNode(nodeId);
-  }, [selectedNodeIds, settings.searchProperties, driver]);
+  }, [selectedNodeIds, settings.nameKeys, driver]);
 
   if (selectedNodeIds.size === 0 && selectedLinkIds.size === 0) {
     return <Text p="sm">{"No selection"}</Text>;

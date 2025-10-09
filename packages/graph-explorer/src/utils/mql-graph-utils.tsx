@@ -10,8 +10,8 @@ export const getNameAndLabels = async (
   nodeId: string,
   properties: string[]
 ): Promise<NameAndLabels> => {
-  const names = properties.map((prop) => `?node.${prop}`).join(",");
-  const query = `LET ?node = ${nodeId} RETURN LABELS(?node) AS ?labels ${names.length ? "," + names : ""}`;
+  const names = properties.map((prop) => `?node.${prop}`).join(", ");
+  const query = `LET ?node = ${nodeId} RETURN LABELS(?node) AS ?labels${names.length ? ", " + names : ""}`;
   const result = session.run(query);
   const records = await result.records();
 

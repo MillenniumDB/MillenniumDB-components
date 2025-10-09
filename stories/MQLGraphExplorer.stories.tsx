@@ -63,10 +63,12 @@ export const Default: Story = {
           {...args}
           style={{ flex: 1, border: "1px solid red" }}
           initialSettings={{
-            searchProperties: ["name", "subject"],
+            nameKeys: ["name"],
+            searchKeys: ["name"],
           }}
         />
       </Container>
     );
   },
 };
+1
