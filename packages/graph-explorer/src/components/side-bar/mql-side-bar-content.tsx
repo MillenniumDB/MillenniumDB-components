@@ -4,7 +4,7 @@ import type { LinkId, NodeId } from "../../types/graph";
 import { Badge, Box, Code, Flex, Loader, Text, Title } from "@mantine/core";
 import { useEffect, useState } from "react";
 import type { GraphSettings } from "../settings/settings";
-import { getNodeDescription } from "../../utils/node-utils";
+import { getNodeDescription } from "../../utils/mql-graph-utils";
 
 type MQLSideBarContentProps = {
   selectedNodeIds: Set<NodeId>;
@@ -43,7 +43,7 @@ export const MQLSideBarContent = ({
 
       try {
         const session = driver.session();
-        const nodeDescription = await getNodeDescription(nodeId, settings.nameKeys, session);
+        const nodeDescription = await getNodeDescription(session, nodeId, settings.nameKeys);
         setDescription(nodeDescription);
       } catch (err) {
         setError(String(err));

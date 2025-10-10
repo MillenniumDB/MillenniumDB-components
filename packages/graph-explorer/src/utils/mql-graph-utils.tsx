@@ -42,6 +42,61 @@ export const getNameAndLabels = async (
   };
 };
 
+export type NodeDescription = {
+  id: string;
+  name: string;
+  type: string;
+  labels: string[];
+  properties: Record<string, unknown>;
+};
+
+export const getNodeDescription = async (
+  session: Session,
+  nodeId: string,
+  nameProperties: string[]
+): Promise<NodeDescription> => {
+  const names = nameProperties.map((prop) => `?node.${prop}`).join(", ");
+  const query = `
+    LET ?node = ${nodeId}
+    RETURN LABELS(?node) AS ?labels, PROPERTIES(?node) AS ?properties${names.length ? ", " + names : ""}
+  `;
+  const result = session.run(query);
+  const records = await result.records();
+
+  let name = nodeId;
+
+  if (!records.length) {
+    return {
+      id: nodeId,
+      labels: [],
+      name,
+      type: "",
+      properties: {},
+    };
+  }
+
+  const record = records[0];
+
+  const labels = record.get("labels")?.map((node: GraphNode) => node.toString()) ?? [];
+  const properties = record.get("properties") ?? {};
+
+  for (const property of nameProperties) {
+    const value = record.get(`node.${property}`);
+    if (value !== null) {
+      name = value;
+      break;
+    }
+  }
+
+  return {
+    id: nodeId,
+    name,
+    type: "Named Node",
+    labels,
+    properties,
+  };
+};
+
 export type LinkNameAndLabels = {
   otherId: string;
   edgeId: string;
