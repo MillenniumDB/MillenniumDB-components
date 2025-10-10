@@ -7,6 +7,8 @@ export type MDBGraphNode = {
   id: NodeId;
   name: string;
   types?: string[];
+  labelBox?: LabelBox;
+  showLabel?: boolean;
 };
 
 export type MDBGraphLink = {
@@ -14,6 +16,15 @@ export type MDBGraphLink = {
   name: string;
   source: NodeId;
   target: NodeId;
+  labelBox?: LabelBox;
+  showLabel?: boolean;
+};
+
+export type LabelBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 export type MDBGraphData = GraphData<MDBGraphNode, MDBGraphLink>;

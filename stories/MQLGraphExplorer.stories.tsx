@@ -63,8 +63,8 @@ export const Default: Story = {
           {...args}
           style={{ flex: 1, border: "1px solid red" }}
           initialSettings={{
-            nameKeys: ["name"],
-            searchKeys: ["name"],
+            nameKeys: ["name", "title"],
+            searchKeys: ["name", "title"],
           }}
         />
       </Container>

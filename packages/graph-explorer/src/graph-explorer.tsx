@@ -25,7 +25,7 @@ import { Toolbar, type ToolId } from "./components/toolbar/toolbar";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
 import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
-import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "./types/graph";
+import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId, LabelBox } from "./types/graph";
 import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-search";
 import { SideBar } from "./components/side-bar/side-bar";
 import clsx from "clsx";
@@ -143,6 +143,22 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       }
     }, [settings]);
 
+    // Truncate text to fit within maxWidth
+    const truncateText = useCallback((ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string => {
+      const ellipsis = "…";
+      const ellipsisWidth = ctx.measureText(ellipsis).width;
+      let width = ctx.measureText(text).width;
+
+      if (width <= maxWidth) return text;
+
+      while (text.length > 0 && width + ellipsisWidth > maxWidth) {
+        text = text.slice(0, -1);
+        width = ctx.measureText(text).width;
+      }
+
+      return text + ellipsis;
+    }, []);
+
     // Render nodes
     const handleNodeCanvasObject = useCallback(
       (node: NodeObject<MDBGraphNode>, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -207,13 +223,28 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         // Draw the name
         ctx.font = `${fontSize}px Sans-Serif`;
 
-        const textWidth = ctx.measureText(name).width;
+        const maxLabelWidth = fontSize * 10;
+        const truncated = truncateText(ctx, name, maxLabelWidth);
+
+        const textWidth = ctx.measureText(truncated).width;
         const namePadding = 1;
         const bgWidth = Math.ceil(textWidth + namePadding);
         const bgHeight = Math.ceil(fontSize + namePadding);
 
         const boxX = x - bgWidth / 2;
         const boxY = y + NODE_DIMENSIONS.radius + NODE_DIMENSIONS.nameVerticalOffsetPx;
+
+        node.labelBox = {
+          x: boxX,
+          y: boxY,
+          width: bgWidth,
+          height: bgHeight,
+        };
+
+        if (node.showLabel === false) {
+          ctx.restore();
+          return;
+        }
 
         // Draw background box
         ctx.fillStyle = computedGraphColors.text.background;
@@ -223,11 +254,27 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         ctx.fillStyle = computedGraphColors.text.foreground;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(name, x, boxY + bgHeight / 2);
+        ctx.fillText(truncated, x, boxY + bgHeight / 2);
 
         ctx.restore();
       },
       [hoveredNodeId, selectedNodeIds, rectangularSelection.nodeIds, computedGraphColors]
+    );
+
+    // Node label on hover
+    const nodeLabel = useCallback(
+      (node: NodeObject<MDBGraphNode>) => {
+        const { id, name } = node;
+        const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const safeId = id.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return `
+          <div>
+            <strong>${safeName}</strong><br/>
+            ${safeName !== safeId ? `<span>id: ${safeId}</span>` : ""}
+          </div>
+        `;
+      },
+      []
     );
 
     // map LinkIds to their corresponding curvature
@@ -377,10 +424,24 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         ctx.translate(bx, by);
 
         ctx.font = `${fontSize}px Sans-Serif`;
-        const textWidth = ctx.measureText(name).width;
+        const maxLabelWidth = fontSize * 10;
+        const truncated = truncateText(ctx, name, maxLabelWidth);
+        const textWidth = ctx.measureText(truncated).width;
         const namePadding = 1;
         const bgWidth = Math.ceil(textWidth + namePadding);
         const bgHeight = Math.ceil(fontSize + namePadding);
+
+        link.labelBox = {
+          x: bx - bgWidth / 2,
+          y: by - bgHeight / 2,
+          width: bgWidth,
+          height: bgHeight,
+        };
+
+        if (link.showLabel === false) {
+          ctx.restore();
+          return;
+        }
 
         // Draw background box
         ctx.fillStyle = computedGraphColors.text.background;
@@ -390,11 +451,27 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         ctx.fillStyle = computedGraphColors.text.foreground;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(name, 0, 0);
+        ctx.fillText(truncated, 0, 0);
 
         ctx.restore();
       },
       [curvatureMap, computedGraphColors]
+    );
+
+    // Link label on hover
+    const linkLabel = useCallback(
+      (link: LinkObject<MDBGraphLink>) => {
+        const { id, name } = link;
+        const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const safeId = id.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return `
+          <div>
+            <strong>${safeName}</strong><br/>
+            ${safeName !== safeId ? `<span>id: ${safeId}</span>` : ""}
+          </div>
+        `;
+      },
+      []
     );
 
     // Node hover interaction
@@ -589,6 +666,39 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       setActiveToolId("move");
     }, []);
 
+    // Recompute label bounding boxes and visibility
+    const boxesOverlap = useCallback((a: LabelBox, b: LabelBox): boolean =>
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    , []);
+
+    const updateLabelVisibility = useCallback(
+      (nodesAndLinks: (NodeObject<MDBGraphNode> | LinkObject<MDBGraphLink>)[]) => {
+        nodesAndLinks.forEach((n) => (n.showLabel = true));
+
+        for (let i = 0; i < nodesAndLinks.length; i++) {
+          const a = nodesAndLinks[i];
+          if (!a.showLabel) continue;
+
+          for (let j = i + 1; j < nodesAndLinks.length; j++) {
+            const b = nodesAndLinks[j];
+            if (a.labelBox && b.labelBox && boxesOverlap(a.labelBox, b.labelBox)) {
+              b.showLabel = false;
+            }
+          }
+        }
+      },
+      []
+    );
+
+    const handleRecomputeLabelsVisibility = useCallback(() => {
+      const nodes = graphAPI.graphData.nodes;
+      const links = graphAPI.graphData.links;
+      updateLabelVisibility([...nodes, ...links]);
+    }, [graphAPI.graphData]);
+
     // Disable default center force
     useEffect(() => {
       fgRef.current?.d3Force("center", null);
@@ -632,8 +742,9 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           onBackgroundClick={handleBackgroundClick}
           onNodeDrag={handleNodeDrag}
           onNodeDragEnd={handleNodeDragEnd}
-          nodeLabel={() => ""}
-          linkLabel={() => ""}
+          nodeLabel={nodeLabel}
+          linkLabel={linkLabel}
+          onZoom={handleRecomputeLabelsVisibility}
         />
         {/* Widgets */}
         <Toolbar
