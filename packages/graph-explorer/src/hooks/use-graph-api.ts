@@ -16,6 +16,7 @@ export type GraphAPI = {
   addNode: (node: MDBGraphNode) => void;
   removeNode: (id: NodeId) => void;
   updateNode: (node: MDBGraphNode) => void;
+  updateLinkName: (linkName: string, linkId: LinkId) => void;
   clear: () => void;
 
   update: () => void;
@@ -157,6 +158,14 @@ export function useGraphAPI(): GraphAPI {
     hasChanges.current = true;
   }, []);
 
+  const updateLinkName = useCallback((linkName: string, linkId: LinkId) => {
+    const existingLink = linkMap.current.get(linkId);
+    if (!existingLink) return;
+
+    existingLink.name = linkName;
+    hasChanges.current = true;
+  }, []);
+
   // commits the updates to the graphData. Must be called at the end of a sequence of modifications
   const update = useCallback(() => {
     if (!hasChanges.current) return;
@@ -185,6 +194,7 @@ export function useGraphAPI(): GraphAPI {
     addNode,
     removeNode,
     updateNode,
+    updateLinkName,
     clear,
 
     update,

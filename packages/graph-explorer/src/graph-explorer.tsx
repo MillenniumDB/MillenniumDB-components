@@ -461,7 +461,8 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     // Link label on hover
     const linkLabel = useCallback(
       (link: LinkObject<MDBGraphLink>) => {
-        const { id, name } = link;
+        const name = link.name;
+        const id = link.iri ? link.iri : link.id;
         const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         const safeId = id.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         return `

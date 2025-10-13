@@ -2,6 +2,7 @@ import { type GraphData } from "react-force-graph-2d";
 
 export type NodeId = string;
 export type LinkId = string;
+export type IRI = string;
 
 export type MDBGraphNode = {
   id: NodeId;
@@ -13,6 +14,7 @@ export type MDBGraphNode = {
 
 export type MDBGraphLink = {
   id: LinkId;
+  iri?: IRI;
   name: string;
   source: NodeId;
   target: NodeId;

@@ -1,15 +1,13 @@
 import { useCallback, useRef, type CSSProperties } from "react";
 import { GraphExplorer } from "./graph-explorer";
-import { Driver, Result, Session, Record as MDBRecord } from "@millenniumdb/driver";
+import { Driver, Result, Session } from "@millenniumdb/driver";
 import { type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
 import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
-import { getFetchNodesQueryMQL } from "./utils/queries";
 import type { GraphColorConfig } from "./hooks/use-graph-colors";
 import { MQLSideBarContent } from "./components/side-bar/mql-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
-import { getNodeDescription } from "./utils/node-utils";
 import { MQLSettingsContent } from "./components/settings/mql-settings-content";
 import { getLinksNameAndLabels, getNameAndLabels, textSearchNodes } from "./utils/mql-graph-utils";
 
@@ -109,36 +107,6 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     }
   }, []);
 
-  const handleSettingsChange = useCallback(
-    async (settings: GraphSettings) => {
-      if (!graphAPI.current) return;
-
-      const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
-      const updates = await Promise.all(
-        nodeIds.map(async (id) => {
-          let session;
-          try {
-            session = driver.session();
-            const nodeDescription = await getNodeDescription(id, settings.nameKeys, session);
-            if (!nodeDescription) return null;
-            return { id, name: nodeDescription.name, types: nodeDescription.labels };
-          } catch (err) {
-            console.error(`Failed to update node ${id}:`, err);
-            return null;
-          } finally {
-            session?.close();
-          }
-        })
-      );
-
-      for (const u of updates) {
-        if (u) graphAPI.current.updateNode(u);
-      }
-      graphAPI.current.update();
-    },
-    [driver, graphAPI]
-  );
-
   const handleRenderSidebarContent = (
     selectedNodeIds: Set<NodeId>,
     selectedLinkIds: Set<LinkId>,
@@ -164,6 +132,36 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
   ) => {
     return <MQLSettingsContent initialSettings={settings} onSave={onSave} close={close} />;
   };
+
+  const handleSettingsChange = useCallback(
+    async (settings: GraphSettings) => {
+      if (!graphAPI.current) return;
+
+      const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
+      const updates = await Promise.all(
+        nodeIds.map(async (id) => {
+          let session;
+          try {
+            session = driver.session();
+            const nodeDescription = await getNameAndLabels(session, id, settings.nameKeys);
+            if (!nodeDescription) return null;
+            return { id, name: nodeDescription.name, types: nodeDescription.labels };
+          } catch (err) {
+            console.error(`Failed to update node ${id}:`, err);
+            return null;
+          } finally {
+            session?.close();
+          }
+        })
+      );
+
+      for (const u of updates) {
+        if (u) graphAPI.current.updateNode(u);
+      }
+      graphAPI.current.update();
+    },
+    [driver, graphAPI]
+  );
 
   return (
     <GraphExplorer

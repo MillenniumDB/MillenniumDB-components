@@ -96,12 +96,12 @@ export const getIriDescription = async (
 
   const literals = records.reduce((acc: Record<string, any>, record: any) => {
     const predicate = record.get("p").toString();
-    // const prefixedPredicate 
+    const prefixedPredicate = getPrefixedIri(predicate, prefixMap);
     const object = record.get("o");
     if (object instanceof IRI) {
       return acc;
     }
-    acc[predicate] = object.toString();
+    acc[prefixedPredicate] = object.toString();
     return acc;
   }, {});
 
@@ -112,6 +112,7 @@ export const getIriDescription = async (
 export type LinkAndNeighbor = {
   neighborId: string;
   edgeId: string;
+  edgeIri: string;
   edgeName: string;
   neighborLabels: string[];
   neighborName: string;
@@ -189,6 +190,7 @@ export const getLinksAndNeighbors = async (
     linksAndNeighbors.push({
       neighborId,
       edgeId,
+      edgeIri,
       edgeName,
       neighborName,
       neighborLabels,

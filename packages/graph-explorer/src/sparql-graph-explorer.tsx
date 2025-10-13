@@ -10,7 +10,7 @@ import type { FetchNodesItem } from "./components/node-search/node-search";
 import { SPARQLSideBarContent } from "./components/side-bar/sparql-sidebar-content";
 import { getIriDescription } from "./utils/node-utils";
 import { SPARQLSettingsContent } from "./components/settings/sparql-settings-content";
-import { getLinksAndNeighbors, getNameAndLabels, textSearchNodes } from "./utils/sparql-graph-utils";
+import { getLinksAndNeighbors, getNameAndLabels, getPrefixedIri, textSearchNodes } from "./utils/sparql-graph-utils";
 
 export type SPARQLGraphExplorerProps = {
   driver: Driver;
@@ -44,7 +44,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
           outgoing
         );
         for (const linkAndNeighbor of linksAndNeighbors) {
-          const { neighborId, edgeId, edgeName, neighborLabels, neighborName } = linkAndNeighbor;
+          const { neighborId, edgeId, edgeIri, edgeName, neighborLabels, neighborName } = linkAndNeighbor;
           graphAPI.current.addNode({
             id: neighborId,
             name: neighborName,
@@ -56,6 +56,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
 
           graphAPI.current.addLink({
             id: edgeId,
+            iri: edgeIri,
             name: edgeName,
             source,
             target,
@@ -158,7 +159,9 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
           let session;
           try {
             session = driver.session();
-            const iriDescription = await getIriDescription(id, settings, session);
+            const iriDescription = await getNameAndLabels(
+              session, id, settings.nameKeys, settings.labelsKey!, settings.prefixes
+            );
             if (!iriDescription) return null;
             return { id, name: iriDescription.name, types: iriDescription.labels };
           } catch (err) {
@@ -173,6 +176,19 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
       for (const u of updates) {
         if (u) graphAPI.current.updateNode(u);
       }
+
+      // Update links
+      const linkIdsAndNames = graphAPI.current.graphData.links.map((l) => ({ id: l.id, iri: l.iri }));
+      const linkNamesUpdates = linkIdsAndNames.map(({ id, iri }) => {
+        if (!iri) return { id, name: id };
+        const newName = getPrefixedIri(iri, settings.prefixes!);
+        return { id, name: newName };
+      });
+
+      for (const u of linkNamesUpdates) {
+        graphAPI.current.updateLinkName(u.name, u.id);
+      }
+
       graphAPI.current.update();
     },
     [driver, graphAPI]
