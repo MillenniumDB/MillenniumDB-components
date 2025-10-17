@@ -171,6 +171,11 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         const isHovered = id === hoveredNodeId;
         const isSelected = selectedNodeIds.has(id);
         const isRectangularSelected = rectangularSelection.nodeIds.has(id);
+        const isDimmed = (hoveredNodeId !== null || hoveredLinkId !== null) && !node.isHighlighted;
+
+        if (isDimmed) {
+          ctx.globalAlpha = 0.2;
+        }
 
         const fontSize = Math.max(GRAPH_DIMENSIONS.fontSize / globalScale, 1);
 
@@ -188,7 +193,6 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
           for (let i = 0; i < numSlices; ++i) {
             const color = getColorForLabel(types![i]);
-
             const startAngle = sliceAngle * i;
             const endAngle = startAngle + sliceAngle;
 
@@ -258,7 +262,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
         ctx.restore();
       },
-      [hoveredNodeId, selectedNodeIds, rectangularSelection.nodeIds, computedGraphColors]
+      [hoveredNodeId, hoveredLinkId, selectedNodeIds, rectangularSelection.nodeIds, computedGraphColors]
     );
 
     // Node label on hover
@@ -340,10 +344,11 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     const handleLinkColor = useCallback(
       (link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
         const { id } = link;
+        const isDimmed = (hoveredNodeId !== null || hoveredLinkId !== null) && !link.isHighlighted;
 
         const isSelected = selectedLinkIds.has(id);
         if (isSelected) {
-          return computedGraphColors.link.fill.selected;
+          return isDimmed ? computedGraphColors.link.fill.selectedDimmed : computedGraphColors.link.fill.selected;
         }
 
         const isHovered = id === hoveredLinkId;
@@ -351,9 +356,9 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           return computedGraphColors.link.fill.hovered;
         }
 
-        return computedGraphColors.link.fill.default;
+        return isDimmed ? computedGraphColors.link.fill.defaultDimmed : computedGraphColors.link.fill.default;
       },
-      [selectedLinkIds, hoveredLinkId]
+      [selectedLinkIds, hoveredLinkId, hoveredNodeId]
     );
 
     // Render links
@@ -372,6 +377,11 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         if (!source.x || !source.y || !target.x || !target.y) return;
 
         ctx.save();
+
+        const isDimmed = (hoveredNodeId !== null || hoveredLinkId !== null) && !link.isHighlighted;
+        if (isDimmed) {
+          ctx.globalAlpha = 0.2;
+        }
 
         const curvature = curvatureMap.get(id) ?? 0;
         const fontSize = Math.max(GRAPH_DIMENSIONS.fontSize / globalScale, 1);
@@ -455,7 +465,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
         ctx.restore();
       },
-      [curvatureMap, computedGraphColors]
+      [curvatureMap, computedGraphColors, hoveredNodeId, hoveredLinkId]
     );
 
     // Link label on hover
@@ -477,12 +487,35 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Node hover interaction
     const handleNodeHover = useCallback((node: NodeObject<MDBGraphNode> | null) => {
-      setHoveredNodeId(node?.id ?? null);
-    }, []);
+      if (node) {
+        setHoveredNodeId(node.id);
+        node.isHighlighted = true;
+        const neighborNodesAndLinks = graphAPI.getNeighborNodesAndLinks(node.id);
+        neighborNodesAndLinks.nodes.forEach((n) => (n.isHighlighted = true));
+        neighborNodesAndLinks.links.forEach((l) => (l.isHighlighted = true));
+      } else {
+        setHoveredNodeId(null);
+        graphAPI.graphData.nodes.forEach((n) => (n.isHighlighted = false));
+        graphAPI.graphData.links.forEach((l) => (l.isHighlighted = false));
+      }
+    }, [graphAPI]);
 
     const handleLinkHover = useCallback((link: LinkObject<MDBGraphNode, MDBGraphNode> | null) => {
-      setHoveredLinkId(link?.id ?? null);
-    }, []);
+      if (link) {
+        setHoveredLinkId(link.id);
+        link.isHighlighted = true;
+        if (link.source) {
+          (link.source as NodeObject<MDBGraphNode>).isHighlighted = true;
+        }
+        if (link.target) {
+          (link.target as NodeObject<MDBGraphNode>).isHighlighted = true;
+        }
+      } else {
+        setHoveredLinkId(null);
+        graphAPI.graphData.nodes.forEach((n) => (n.isHighlighted = false));
+        graphAPI.graphData.links.forEach((l) => (l.isHighlighted = false));
+      }
+    }, [graphAPI]);
 
     const handleNodeClick = useCallback(
       (node: NodeObject<MDBGraphNode>, event: MouseEvent) => {

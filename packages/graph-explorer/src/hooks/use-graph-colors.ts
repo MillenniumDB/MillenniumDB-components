@@ -15,8 +15,10 @@ export type GraphColorConfig = {
   link: {
     fill: {
       default: string;
+      defaultDimmed: string;
       hovered: string;
       selected: string;
+      selectedDimmed: string;
     };
   };
   text: {
@@ -75,8 +77,10 @@ function makeDefaultGraphColors(theme: MantineTheme, colorScheme: string): Graph
     link: {
       fill: {
         default: linkDefault,
+        defaultDimmed: rgba(linkDefault, 0.2),
         hovered: linkHovered,
         selected: linkSelected,
+        selectedDimmed: rgba(linkSelected, 0.2),
       },
     },
     text: {

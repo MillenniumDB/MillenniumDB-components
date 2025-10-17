@@ -9,6 +9,7 @@ export type GraphAPI = {
   getLink: (id: LinkId) => LinkObject<MDBGraphNode, MDBGraphLink> | undefined;
   getOutgoingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
   getIncomingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
+  getNeighborNodesAndLinks: (id: NodeId) => { nodes: NodeObject<MDBGraphNode>[]; links: LinkObject<MDBGraphNode, MDBGraphLink>[] };
 
   addGraphData: ({ newGraphData, replace }: { newGraphData: MDBGraphData; replace?: boolean }) => void;
   addLink: (link: LinkObject<MDBGraphNode, MDBGraphLink>) => void;
@@ -149,6 +150,33 @@ export function useGraphAPI(): GraphAPI {
     return Array.from(incomingLinks.current.get(id) || []).map((id) => linkMap.current.get(id)!);
   }, []);
 
+  const getNeighborNodesAndLinks = useCallback(
+    (id: NodeId): { nodes: NodeObject<MDBGraphNode>[]; links: LinkObject<MDBGraphNode, MDBGraphLink>[] } => {
+      const neighborNodes = new Set<NodeObject<MDBGraphNode>>();
+      const neighborLinks = new Set<LinkObject<MDBGraphNode, MDBGraphLink>>();
+
+      for (const link of getOutgoingLinks(id)) {
+        neighborLinks.add(link);
+        const targetNode = nodeMap.current.get((link.target as MDBGraphNode).id);
+        if (targetNode) {
+          neighborNodes.add(targetNode);
+        }
+      }
+
+      for (const link of getIncomingLinks(id)) {
+        neighborLinks.add(link);
+        const sourceNode = nodeMap.current.get((link.source as MDBGraphNode).id);
+        if (sourceNode) {
+          neighborNodes.add(sourceNode);
+        }
+      }
+
+      return { nodes: Array.from(neighborNodes), links: Array.from(neighborLinks) };
+    },
+    []
+  );
+
+  // Updates a node's properties (name, types)
   const updateNode = useCallback((node: MDBGraphNode) => {
     const existingNode = nodeMap.current.get(node.id);
     if (!existingNode) return;
@@ -187,6 +215,7 @@ export function useGraphAPI(): GraphAPI {
     getLink,
     getOutgoingLinks,
     getIncomingLinks,
+    getNeighborNodesAndLinks,
 
     addGraphData,
     addLink,

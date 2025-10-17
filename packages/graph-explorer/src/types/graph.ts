@@ -10,6 +10,7 @@ export type MDBGraphNode = {
   types?: string[];
   labelBox?: LabelBox;
   showLabel?: boolean;
+  isHighlighted?: boolean;
 };
 
 export type MDBGraphLink = {
@@ -20,6 +21,7 @@ export type MDBGraphLink = {
   target: NodeId;
   labelBox?: LabelBox;
   showLabel?: boolean;
+  isHighlighted?: boolean;
 };
 
 export type LabelBox = {
