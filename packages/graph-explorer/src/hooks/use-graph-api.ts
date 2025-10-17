@@ -9,7 +9,10 @@ export type GraphAPI = {
   getLink: (id: LinkId) => LinkObject<MDBGraphNode, MDBGraphLink> | undefined;
   getOutgoingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
   getIncomingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
-  getNeighborNodesAndLinks: (id: NodeId) => { nodes: NodeObject<MDBGraphNode>[]; links: LinkObject<MDBGraphNode, MDBGraphLink>[] };
+  getNeighborNodesAndLinks: (id: NodeId) => {
+    nodes: NodeObject<MDBGraphNode>[];
+    links: LinkObject<MDBGraphNode, MDBGraphLink>[];
+  };
 
   addGraphData: ({ newGraphData, replace }: { newGraphData: MDBGraphData; replace?: boolean }) => void;
   addLink: (link: LinkObject<MDBGraphNode, MDBGraphLink>) => void;
@@ -143,11 +146,15 @@ export function useGraphAPI(): GraphAPI {
   }, []);
 
   const getOutgoingLinks = useCallback((id: NodeId): LinkObject<MDBGraphNode, MDBGraphLink>[] => {
-    return Array.from(outgoingLinks.current.get(id) || []).map((id) => linkMap.current.get(id)!);
+    return Array.from(outgoingLinks.current.get(id) || [])
+      .map((id) => linkMap.current.get(id))
+      .filter((link) => link !== undefined);
   }, []);
 
   const getIncomingLinks = useCallback((id: NodeId): LinkObject<MDBGraphNode, MDBGraphLink>[] => {
-    return Array.from(incomingLinks.current.get(id) || []).map((id) => linkMap.current.get(id)!);
+    return Array.from(incomingLinks.current.get(id) || [])
+      .map((id) => linkMap.current.get(id))
+      .filter((link) => link !== undefined);
   }, []);
 
   const getNeighborNodesAndLinks = useCallback(
