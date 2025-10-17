@@ -90,7 +90,6 @@ export const getNodesNamesAndLabels = async (
       ?subject ?p ?o .
     }
   `;
-  console.log("getNodesNamesAndLabels query:", query);
   const result = session.run(query);
   const records = await result.records();
 
