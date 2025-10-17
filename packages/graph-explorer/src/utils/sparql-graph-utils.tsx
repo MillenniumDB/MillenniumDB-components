@@ -75,6 +75,44 @@ export const getNameAndLabels = async (
   return { name, labels };
 };
 
+export const getNodesNamesAndLabels = async (
+  session: Session,
+  iris: string[],
+  namePredicates: string[],
+  labelsPredicate: string,
+  prefixes: Record<string, string> = {}
+): Promise<Map<string, NameAndLabels>> => {
+  const iriValues = iris.join(" ");
+  const query = `
+    SELECT ?subject ?p ?o
+    WHERE {
+      VALUES ?subject { ${iriValues} }
+      ?subject ?p ?o .
+    }
+  `;
+  console.log("getNodesNamesAndLabels query:", query);
+  const result = session.run(query);
+  const records = await result.records();
+
+  const byIri = new Map<string, any[]>();
+  for (const record of records) {
+    const subject = record.get("subject").toString();
+    if (!byIri.has(subject)) {
+      byIri.set(subject, []);
+    }
+    byIri.get(subject)!.push(record);
+  }
+
+  const resultMap = new Map<string, NameAndLabels>();
+  for (const iri of iris) {
+    const iriRecords = byIri.get(iri) || [];
+    const { name, labels } = getNameAndLabelsFromRecords(iri, iriRecords, namePredicates, labelsPredicate, prefixes);
+    resultMap.set(iri, { name, labels });
+  }
+
+  return resultMap;
+}
+
 export type IriDescription = {
   iri: string;
   name: string;

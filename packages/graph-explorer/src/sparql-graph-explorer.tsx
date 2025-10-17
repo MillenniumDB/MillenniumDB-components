@@ -10,7 +10,7 @@ import type { FetchNodesItem } from "./components/node-search/node-search";
 import { SPARQLSideBarContent } from "./components/side-bar/sparql-sidebar-content";
 import { getIriDescription } from "./utils/node-utils";
 import { SPARQLSettingsContent } from "./components/settings/sparql-settings-content";
-import { getLinksAndNeighbors, getNameAndLabels, getPrefixedIri, textSearchNodes } from "./utils/sparql-graph-utils";
+import { getLinksAndNeighbors, getNameAndLabels, getNodesNamesAndLabels, getPrefixedIri, textSearchNodes } from "./utils/sparql-graph-utils";
 
 export type SPARQLGraphExplorerProps = {
   driver: Driver;
@@ -153,31 +153,26 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     async (settings: GraphSettings) => {
       if (!graphAPI.current) return;
 
+      // Update nodes names and labels
       const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
-      const updates = await Promise.all(
-        nodeIds.map(async (id) => {
-          let session;
-          try {
-            session = driver.session();
-            const iriDescription = await getNameAndLabels(
-              session, id, settings.nameKeys, settings.labelsKey!, settings.prefixes
-            );
-            if (!iriDescription) return null;
-            return { id, name: iriDescription.name, types: iriDescription.labels };
-          } catch (err) {
-            console.error(`Failed to update node ${id}:`, err);
-            return null;
-          } finally {
-            session?.close();
-          }
-        })
+      const session = driver.session();
+      const updates = await getNodesNamesAndLabels(
+        session,
+        nodeIds,
+        settings.nameKeys,
+        settings.labelsKey!,
+        settings.prefixes
       );
 
-      for (const u of updates) {
-        if (u) graphAPI.current.updateNode(u);
+      for (const [id, { name, labels }] of updates.entries()) {
+        graphAPI.current.updateNode({
+          id,
+          name,
+          types: labels,
+        });
       }
 
-      // Update links
+      // Update links names
       const linkIdsAndNames = graphAPI.current.graphData.links.map((l) => ({ id: l.id, iri: l.iri }));
       const linkNamesUpdates = linkIdsAndNames.map(({ id, iri }) => {
         if (!iri) return { id, name: id };
