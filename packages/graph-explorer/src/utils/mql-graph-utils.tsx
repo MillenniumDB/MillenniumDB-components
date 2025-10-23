@@ -117,11 +117,11 @@ export const getLinksNameAndLabels = async (
   if (outgoing) {
     query = `LET ?node = ${nodeId}
 MATCH (?node)-[?edge :?type]->(?other)
-RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels, ${names}`;
+RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels${names.length > 0 ? ", " + names : ""}`;
   } else {
     query = `LET ?node = ${nodeId}
 MATCH (?other)-[?edge :?type]->(?node)
-RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels, ${names}`;
+RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels${names.length > 0 ? ", " + names : ""}`;
   }
 
   const result = session.run(query);
