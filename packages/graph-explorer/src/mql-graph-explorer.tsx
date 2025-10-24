@@ -137,23 +137,26 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     async (settings: GraphSettings) => {
       if (!graphAPI.current) return;
 
+      let session: Session | undefined;
+      let updates;
       const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
-      const updates = await Promise.all(
-        nodeIds.map(async (id) => {
-          let session;
-          try {
-            session = driver.session();
-            const nodeDescription = await getNameAndLabels(session, id, settings.nameKeys);
-            if (!nodeDescription) return null;
-            return { id, name: nodeDescription.name, types: nodeDescription.labels };
-          } catch (err) {
-            console.error(`Failed to update node ${id}:`, err);
-            return null;
-          } finally {
-            session?.close();
-          }
-        })
-      );
+      try {
+        session = driver.session();
+        updates = await Promise.all(
+          nodeIds.map(async (id) => {
+            try {
+              const nodeDescription = await getNameAndLabels(session!, id, settings.nameKeys);
+              if (!nodeDescription) return null;
+              return { id, name: nodeDescription.name, types: nodeDescription.labels };
+            } catch (err) {
+              console.error(`Failed to update node ${id}:`, err);
+              return null;
+            }
+          })
+        );
+      } finally {
+        session?.close();
+      }
 
       for (const u of updates) {
         if (u) graphAPI.current.updateNode(u);
