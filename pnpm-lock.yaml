@@ -60,9 +60,6 @@ importers:
 
   packages/graph-explorer:
     dependencies:
-      '@millenniumdb/driver':
-        specifier: ^1.0.3
-        version: 1.0.3
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -91,6 +88,9 @@ importers:
       '@mantine/hooks':
         specifier: ^8.2.5
         version: 8.2.5(react@19.1.1)
+      '@millenniumdb/driver':
+        specifier: 1.1.2-patch.1
+        version: 1.1.2-patch.1
       '@tabler/icons-react':
         specifier: ^3.34.1
         version: 3.34.1(react@19.1.1)
@@ -410,6 +410,9 @@ packages:
 
   '@millenniumdb/driver@1.0.3':
     resolution: {integrity: sha512-KEGXU5qPN0zpjEy6C7uhC3fyxsrzexjv7o2rUboG9O6EJmLJS9P010UJHdIsYq1CAXrlKKR6T77Yv03k4eCweQ==}
+
+  '@millenniumdb/driver@1.1.2-patch.1':
+    resolution: {integrity: sha512-C/wWJ3L4RIgYjW65xcn6o2vJ7nxh7rCg7beKkMkUbEdAYSSv4G+QTOBMk+QgZZa3O0VUwvECL1cBqFqn2qIoWw==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -2243,6 +2246,14 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.2
       buffer: 6.0.3
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@millenniumdb/driver@1.1.2-patch.1':
+    dependencies:
+      tslib: 2.8.1
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
