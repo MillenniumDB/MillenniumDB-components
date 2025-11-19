@@ -38,7 +38,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@millenniumdb/driver": "^1.0.3",
+    "@millenniumdb/driver": "1.1.1-patch.1",
     "clsx": "^2.1.1",
     "lodash": "^4.17.21",
     "react-force-graph-2d": "^1.28.0",

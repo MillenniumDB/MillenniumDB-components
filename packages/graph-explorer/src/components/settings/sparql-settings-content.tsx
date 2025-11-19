@@ -19,9 +19,8 @@ type Errors = {
 };
 
 function isValidIri(str: string): boolean {
-  if (typeof str !== "string" || !str.startsWith("<") || !str.endsWith(">")) return false;
-  const inner = str.slice(1, -1).trim();
-  const parsed = URI.parse(inner);
+  if (typeof str !== "string") return false;
+  const parsed = URI.parse(str);
   return !!parsed.scheme && !parsed.error;
 }
 
@@ -66,7 +65,7 @@ export const SPARQLSettingsContent = ({
     } else {
       setErrors((prev) => ({
         ...prev,
-        name: "Invalid IRI. Use <http://example.com/predicate>.",
+        name: "Invalid IRI. Use http://example.com/predicate.",
       }));
     }
   };
@@ -89,7 +88,7 @@ export const SPARQLSettingsContent = ({
     } else {
       setErrors((prev) => ({
         ...prev,
-        search: "Invalid IRI. Use <http://example.com/predicate>.",
+        search: "Invalid IRI. Use http://example.com/predicate.",
       }));
     }
   };
@@ -111,7 +110,7 @@ export const SPARQLSettingsContent = ({
     } else {
       setErrors((prev) => ({
         ...prev,
-        labels: "Invalid IRI. Use <http://example.com/predicate>.",
+        labels: "Invalid IRI. Use http://example.com/predicate.",
       }));
     }
   };

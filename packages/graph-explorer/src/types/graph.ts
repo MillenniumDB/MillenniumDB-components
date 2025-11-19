@@ -1,34 +1,63 @@
 import { type GraphData } from "react-force-graph-2d";
+import {
+  GraphNode,
+  GraphAnon,
+  GraphEdge,
+  IRI,
+  StringLang,
+  StringDatatype,
+  SimpleDate,
+  Time,
+  DateTime,
+  Decimal,
+} from "@millenniumdb/driver";
 
-export type NodeId = string;
-export type LinkId = string;
-export type IRI = string;
+export type MdbGraphObject =
+  | IRI
+  | StringLang
+  | StringDatatype
+  | GraphNode
+  | GraphAnon
+  | GraphEdge
+  | SimpleDate
+  | Time
+  | DateTime
+  | Decimal
+  | string
+  | number
+  | boolean
+  | null
+  | undefined;
 
-export type MDBGraphNode = {
-  id: NodeId;
+export type GraphVisNodeValue = IRI | GraphNode | GraphAnon;
+export type GraphVisEdgeValue = IRI | GraphEdge;
+
+export type GraphVisNode = {
+  id: string;
+  value: GraphVisNodeValue;
   name: string;
-  types?: string[];
-  labelBox?: LabelBox;
-  showLabel?: boolean;
+  labels?: string[];
+  nodeLabelBox?: NodeLabelBox;
+  showNodeLabel?: boolean;
   isHighlighted?: boolean;
 };
 
-export type MDBGraphLink = {
-  id: LinkId;
-  iri?: IRI;
+export type GraphVisEdge = {
+  id: string;
+  value: GraphVisEdgeValue;
   name: string;
-  source: NodeId;
-  target: NodeId;
-  labelBox?: LabelBox;
-  showLabel?: boolean;
+  source: string;
+  target: string;
+  nodeLabelBox?: NodeLabelBox;
+  showNodeLabel?: boolean;
   isHighlighted?: boolean;
 };
 
-export type LabelBox = {
+export type NodeLabelBox = {
   x: number;
   y: number;
   width: number;
   height: number;
 };
 
-export type MDBGraphData = GraphData<MDBGraphNode, MDBGraphLink>;
+export type GraphVisData = GraphData<GraphVisNode, GraphVisEdge>;

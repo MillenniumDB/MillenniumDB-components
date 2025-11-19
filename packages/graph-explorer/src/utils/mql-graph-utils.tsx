@@ -1,4 +1,6 @@
 import type { GraphNode, Session } from "@millenniumdb/driver";
+import type { GraphVisEdgeValue, GraphVisNodeValue } from "../types/graph";
+import { formatGraphValue, getGraphValueId } from "./node-id-utils";
 
 export type NameAndLabels = {
   labels: string[];
@@ -7,15 +9,17 @@ export type NameAndLabels = {
 
 export const getNameAndLabels = async (
   session: Session,
-  nodeId: string,
+  nodeValue: GraphVisNodeValue,
   properties: string[]
 ): Promise<NameAndLabels> => {
+  console.log("Getting name and labels for:", nodeValue);
   const names = properties.map((prop) => `?node.${prop}`).join(", ");
-  const query = `LET ?node = ${nodeId} RETURN LABELS(?node) AS ?labels${names.length ? ", " + names : ""}`;
-  const result = session.run(query);
+  const query = `LET ?node = ?nodeValue RETURN LABELS(?node) AS ?labels${names.length ? ", " + names : ""}`;
+  const result = session.run(query, { nodeValue });
   const records = await result.records();
+  console.log("Records received:", records);
 
-  let name = nodeId;
+  let name = formatGraphValue(nodeValue);
 
   if (!records.length) {
     return {
@@ -44,6 +48,7 @@ export const getNameAndLabels = async (
 
 export type NodeDescription = {
   id: string;
+  nodeValue: GraphVisNodeValue;
   name: string;
   type: string;
   labels: string[];
@@ -52,25 +57,26 @@ export type NodeDescription = {
 
 export const getNodeDescription = async (
   session: Session,
-  nodeId: string,
+  nodeValue: GraphVisNodeValue,
   nameProperties: string[]
 ): Promise<NodeDescription> => {
   const names = nameProperties.map((prop) => `?node.${prop}`).join(", ");
   const query = `
-    LET ?node = ${nodeId}
+    LET ?node = ?nodeValue
     RETURN LABELS(?node) AS ?labels, PROPERTIES(?node) AS ?properties${names.length ? ", " + names : ""}
   `;
-  const result = session.run(query);
+  const result = session.run(query, { nodeValue });
   const records = await result.records();
 
-  let name = nodeId;
+  let name = formatGraphValue(nodeValue);
 
   if (!records.length) {
     return {
-      id: nodeId,
-      labels: [],
+      id: getGraphValueId(nodeValue),
+      nodeValue,
       name,
-      type: "",
+      type: "Named Node",
+      labels: [],
       properties: {},
     };
   }
@@ -89,7 +95,8 @@ export const getNodeDescription = async (
   }
 
   return {
-    id: nodeId,
+    id: getGraphValueId(nodeValue),
+    nodeValue,
     name,
     type: "Named Node",
     labels,
@@ -99,7 +106,9 @@ export const getNodeDescription = async (
 
 export type LinkNameAndLabels = {
   otherId: string;
+  otherValue: GraphVisNodeValue;
   edgeId: string;
+  edgeValue: GraphVisEdgeValue;
   type: string;
   labels: string[];
   name: string;
@@ -107,7 +116,7 @@ export type LinkNameAndLabels = {
 
 export const getLinksNameAndLabels = async (
   session: Session,
-  nodeId: string,
+  nodeValue: GraphVisNodeValue,
   properties: string[],
   outgoing: boolean
 ): Promise<LinkNameAndLabels[]> => {
@@ -115,16 +124,16 @@ export const getLinksNameAndLabels = async (
 
   let query;
   if (outgoing) {
-    query = `LET ?node = ${nodeId}
+    query = `LET ?node = ?nodeValue
 MATCH (?node)-[?edge :?type]->(?other)
 RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels${names.length > 0 ? ", " + names : ""}`;
   } else {
-    query = `LET ?node = ${nodeId}
+    query = `LET ?node = ?nodeValue
 MATCH (?other)-[?edge :?type]->(?node)
 RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels${names.length > 0 ? ", " + names : ""}`;
   }
 
-  const result = session.run(query);
+  const result = session.run(query, { nodeValue });
   const records = await result.records();
 
   if (!records.length) {
@@ -132,12 +141,14 @@ RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels${names.length > 0 ? ", " 
   }
 
   return records.map((record) => {
-    const otherId = record.get("other").toString();
-    const edgeId = record.get("edge").toString();
+    const otherId = getGraphValueId(record.get("other"));
+    const otherValue = record.get("other") as GraphVisNodeValue;
+    const edgeId = getGraphValueId(record.get("edge"));
+    const edgeValue = record.get("edge") as GraphVisEdgeValue;
     const type = record.get("type").toString();
     const labels = record.get("labels")?.map((node: GraphNode) => node.toString()) ?? [];
 
-    let name = otherId;
+    let name = formatGraphValue(otherValue);
     for (const property of properties) {
       const value = record.get(`other.${property}`);
       if (value !== null) {
@@ -148,7 +159,9 @@ RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels${names.length > 0 ? ", " 
 
     return {
       otherId,
+      otherValue,
       edgeId,
+      edgeValue,
       type,
       labels,
       name,
@@ -158,13 +171,13 @@ RETURN ?other, ?edge, ?type, LABELS(?other) AS ?labels${names.length > 0 ? ", " 
 
 export type TextSearchItem = {
   category: string;
-  id: string;
-  name: string;
+  nodeValue: GraphVisNodeValue;
+  result: string | undefined;
 };
 
 export const textSearchNodes = async (
   session: Session,
-  text: string,
+  searchText: string,
   properties: string[],
   limit: number
 ): Promise<TextSearchItem[]> => {
@@ -172,37 +185,42 @@ export const textSearchNodes = async (
   let filterStatement = "WHERE ";
   for (const property of properties) {
     const rgxVar = `?hasMatch_${property}`;
-    letStatement += `LET ${rgxVar} = REGEX(STR(?node.${property}),"(^|\\s)(${text}).*","i")\n`;
+    letStatement += `LET ${rgxVar} = REGEX(STR(?node.${property}),?propertiesRegex,"i")\n`;
     filterStatement += `${rgxVar} OR `;
   }
-  filterStatement += `REGEX(STR(?node), "^(${text}).*","i")`;
+  filterStatement += `REGEX(STR(?node),?nodeIdRegex,"i")`;
 
-  const query = `MATCH (?node)
-${letStatement}
-${filterStatement}
-RETURN *
-LIMIT ${limit}`;
+  const query = `
+    MATCH (?node)
+    ${letStatement}
+    ${filterStatement}
+    RETURN *
+    LIMIT ${limit}
+  `;
 
-  const result = session.run(query);
+  const propertiesRegex = `(^|\\s)(${searchText}).*`;
+  const nodeIdRegex = `^(${searchText}).*`;
+
+  const result = session.run(query, { propertiesRegex, nodeIdRegex });
   const records = await result.records();
 
   return records.map((record) => {
-    const nodeId = record.get("node").toString();
-    let name = nodeId;
-    let category = "";
+    const nodeValue = record.get("node");
+    let result;
+    let category;
     for (const property of properties) {
       const hasMatch = record.get(`hasMatch_${property}`);
       if (hasMatch) {
-        name = record.get(`node.${property}`);
+        result = record.get(`node.${property}`);
         category = property;
         break;
       }
     }
 
     return {
-      category: category.length === 0 ? "id" : category,
-      id: nodeId,
-      name,
+      category: category === undefined ? "Node id" : category,
+      nodeValue,
+      result,
     };
   });
 };

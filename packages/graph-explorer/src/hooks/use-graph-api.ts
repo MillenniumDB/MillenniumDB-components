@@ -1,26 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId } from "../types/graph";
+import { useCallback, useRef, useState } from "react";
+import type { GraphVisData, GraphVisEdge, GraphVisNode } from "../types/graph";
 import type { LinkObject, NodeObject } from "react-force-graph-2d";
 
 export type GraphAPI = {
-  graphData: MDBGraphData;
+  graphData: GraphVisData;
 
-  getNode: (id: NodeId) => NodeObject<MDBGraphNode> | undefined;
-  getLink: (id: LinkId) => LinkObject<MDBGraphNode, MDBGraphLink> | undefined;
-  getOutgoingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
-  getIncomingLinks: (id: NodeId) => LinkObject<MDBGraphNode, MDBGraphLink>[];
-  getNeighborNodesAndLinks: (id: NodeId) => {
-    nodes: NodeObject<MDBGraphNode>[];
-    links: LinkObject<MDBGraphNode, MDBGraphLink>[];
+  getNode: (id: string) => NodeObject<GraphVisNode> | undefined;
+  getLink: (id: string) => LinkObject<GraphVisNode, GraphVisEdge> | undefined;
+  getOutgoingLinks: (id: string) => LinkObject<GraphVisNode, GraphVisEdge>[];
+  getIncomingLinks: (id: string) => LinkObject<GraphVisNode, GraphVisEdge>[];
+  getNeighborNodesAndLinks: (id: string) => {
+    nodes: NodeObject<GraphVisNode>[];
+    links: LinkObject<GraphVisNode, GraphVisEdge>[];
   };
 
-  addGraphData: ({ newGraphData, replace }: { newGraphData: MDBGraphData; replace?: boolean }) => void;
-  addLink: (link: LinkObject<MDBGraphNode, MDBGraphLink>) => void;
-  removeLink: (id: LinkId) => void;
-  addNode: (node: MDBGraphNode) => void;
-  removeNode: (id: NodeId) => void;
-  updateNode: (node: MDBGraphNode) => void;
-  updateLinkName: (linkName: string, linkId: LinkId) => void;
+  addGraphData: ({ newGraphData, replace }: { newGraphData: GraphVisData; replace?: boolean }) => void;
+  addLink: (link: LinkObject<GraphVisNode, GraphVisEdge>) => void;
+  removeLink: (id: string) => void;
+  addNode: (node: GraphVisNode) => void;
+  removeNode: (id: string) => void;
+  updateNode: (nodeId: string, nodeName: string, nodeLabels: string[]) => void;
+  updateLinkName: (linkId: string, linkName: string) => void;
   clear: () => void;
 
   update: () => void;
@@ -31,26 +31,26 @@ export type GraphAPI = {
  * Supports efficient updates via internal refs and exposes a stable graph snapshot.
  */
 export function useGraphAPI(): GraphAPI {
-  const [graphData, setGraphData] = useState<MDBGraphData>({ nodes: [], links: [] });
+  const [graphData, setGraphData] = useState<GraphVisData>({ nodes: [], links: [] });
 
-  const nodeMap = useRef(new Map<NodeId, NodeObject<MDBGraphNode>>());
-  const linkMap = useRef(new Map<LinkId, LinkObject<MDBGraphNode, MDBGraphLink>>());
-  const outgoingLinks = useRef(new Map<NodeId, Set<LinkId>>());
-  const incomingLinks = useRef(new Map<NodeId, Set<LinkId>>());
+  const nodeMap = useRef(new Map<string, NodeObject<GraphVisNode>>());
+  const linkMap = useRef(new Map<string, LinkObject<GraphVisNode, GraphVisEdge>>());
+  const outgoingLinks = useRef(new Map<string, Set<string>>());
+  const incomingLinks = useRef(new Map<string, Set<string>>());
 
   const hasChanges = useRef(false);
 
   // get a node by its id
-  const getNode = useCallback((id: NodeId): NodeObject<MDBGraphNode> | undefined => {
+  const getNode = useCallback((id: string): NodeObject<GraphVisNode> | undefined => {
     return nodeMap.current.get(id);
   }, []);
 
   // get a link by its id
-  const getLink = useCallback((id: LinkId): LinkObject<MDBGraphNode, MDBGraphLink> | undefined => {
+  const getLink = useCallback((id: string): LinkObject<GraphVisNode, GraphVisEdge> | undefined => {
     return linkMap.current.get(id);
   }, []);
 
-  const addLink = useCallback((link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
+  const addLink = useCallback((link: LinkObject<GraphVisNode, GraphVisEdge>) => {
     const { id, source, target } = link;
 
     if (linkMap.current.has(id)) return;
@@ -65,7 +65,7 @@ export function useGraphAPI(): GraphAPI {
     hasChanges.current = true;
   }, []);
 
-  const removeLink = useCallback((id: LinkId) => {
+  const removeLink = useCallback((id: string) => {
     const link = linkMap.current.get(id);
     if (!link) return;
 
@@ -82,7 +82,7 @@ export function useGraphAPI(): GraphAPI {
     hasChanges.current = true;
   }, []);
 
-  const addNode = useCallback((node: MDBGraphNode) => {
+  const addNode = useCallback((node: GraphVisNode) => {
     const { id } = node;
     if (nodeMap.current.has(id)) return;
 
@@ -94,7 +94,7 @@ export function useGraphAPI(): GraphAPI {
   }, []);
 
   // replaces or merge graphData
-  const addGraphData = ({ newGraphData, replace = false }: { newGraphData: MDBGraphData; replace?: boolean }) => {
+  const addGraphData = ({ newGraphData, replace = false }: { newGraphData: GraphVisData; replace?: boolean }) => {
     if (replace) {
       clear();
     }
@@ -108,7 +108,7 @@ export function useGraphAPI(): GraphAPI {
     }
   };
 
-  const removeNode = useCallback((id: NodeId) => {
+  const removeNode = useCallback((id: string) => {
     if (!nodeMap.current.has(id)) return;
 
     nodeMap.current.delete(id);
@@ -145,26 +145,26 @@ export function useGraphAPI(): GraphAPI {
     hasChanges.current = true;
   }, []);
 
-  const getOutgoingLinks = useCallback((id: NodeId): LinkObject<MDBGraphNode, MDBGraphLink>[] => {
+  const getOutgoingLinks = useCallback((id: string): LinkObject<GraphVisNode, GraphVisEdge>[] => {
     return Array.from(outgoingLinks.current.get(id) || [])
       .map((id) => linkMap.current.get(id))
       .filter((link) => link !== undefined);
   }, []);
 
-  const getIncomingLinks = useCallback((id: NodeId): LinkObject<MDBGraphNode, MDBGraphLink>[] => {
+  const getIncomingLinks = useCallback((id: string): LinkObject<GraphVisNode, GraphVisEdge>[] => {
     return Array.from(incomingLinks.current.get(id) || [])
       .map((id) => linkMap.current.get(id))
       .filter((link) => link !== undefined);
   }, []);
 
   const getNeighborNodesAndLinks = useCallback(
-    (id: NodeId): { nodes: NodeObject<MDBGraphNode>[]; links: LinkObject<MDBGraphNode, MDBGraphLink>[] } => {
-      const neighborNodes = new Set<NodeObject<MDBGraphNode>>();
-      const neighborLinks = new Set<LinkObject<MDBGraphNode, MDBGraphLink>>();
+    (id: string): { nodes: NodeObject<GraphVisNode>[]; links: LinkObject<GraphVisNode, GraphVisEdge>[] } => {
+      const neighborNodes = new Set<NodeObject<GraphVisNode>>();
+      const neighborLinks = new Set<LinkObject<GraphVisNode, GraphVisEdge>>();
 
       for (const link of getOutgoingLinks(id)) {
         neighborLinks.add(link);
-        const targetNode = nodeMap.current.get((link.target as MDBGraphNode).id);
+        const targetNode = nodeMap.current.get((link.target as GraphVisNode).id);
         if (targetNode) {
           neighborNodes.add(targetNode);
         }
@@ -172,7 +172,7 @@ export function useGraphAPI(): GraphAPI {
 
       for (const link of getIncomingLinks(id)) {
         neighborLinks.add(link);
-        const sourceNode = nodeMap.current.get((link.source as MDBGraphNode).id);
+        const sourceNode = nodeMap.current.get((link.source as GraphVisNode).id);
         if (sourceNode) {
           neighborNodes.add(sourceNode);
         }
@@ -184,16 +184,16 @@ export function useGraphAPI(): GraphAPI {
   );
 
   // Updates a node's properties (name, types)
-  const updateNode = useCallback((node: MDBGraphNode) => {
-    const existingNode = nodeMap.current.get(node.id);
+  const updateNode = useCallback((nodeId: string, nodeName: string, nodeLabels: string[]) => {
+    const existingNode = nodeMap.current.get(nodeId);
     if (!existingNode) return;
 
-    existingNode.name = node.name;
-    existingNode.types = node.types ?? [];
+    existingNode.name = nodeName;
+    existingNode.labels = nodeLabels ?? [];
     hasChanges.current = true;
   }, []);
 
-  const updateLinkName = useCallback((linkName: string, linkId: LinkId) => {
+  const updateLinkName = useCallback((linkId: string, linkName: string) => {
     const existingLink = linkMap.current.get(linkId);
     if (!existingLink) return;
 

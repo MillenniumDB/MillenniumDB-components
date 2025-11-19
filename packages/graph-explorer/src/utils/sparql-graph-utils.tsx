@@ -1,31 +1,30 @@
-import { IRI, type Session } from "@millenniumdb/driver";
+import { IRI, Record as MdbRecord, Session } from "@millenniumdb/driver";
+import { formatGraphValue, getGraphValueId } from "./node-id-utils";
+import type { GraphVisEdgeValue, GraphVisNodeValue } from "../types/graph";
 
-export const getPrefixedIri = (iri: string, prefixMap: Record<string, string>): string => {
-  const iriName = iri.toString().slice(1, -1);
-  for (const [prefix, namespace] of Object.entries(prefixMap)) {
-    if (iriName.startsWith(namespace)) {
-      return `${prefix}:${iriName.slice(namespace.length)}`;
-    }
-  }
-  return iri;
-}
+export type NameAndLabels = {
+  name: string;
+  labels: string[];
+};
 
 export const getNameAndLabelsFromRecords = (
-  iri: string,
-  records: any[],
+  node: GraphVisNodeValue,
+  records: MdbRecord[],
   namePredicates: string[],
   labelsPredicate: string,
   prefixes: Record<string, string> = {},
   varKeys: Partial<{ predicate: string; object: string }> = {}
-): {  name: string; labels: string[] } => {
+): NameAndLabels => {
   const {
     predicate: predKey = "p",
     object: objKey = "o",
   } = varKeys;
 
   if (records.length === 0) {
-    const name = getPrefixedIri(iri, prefixes)
-    return { name, labels: [] };
+    return {
+      name: formatGraphValue(node, prefixes),
+      labels: [],
+    };
   }
 
   const firstByPredicate = new Map<string, string>();
@@ -43,46 +42,39 @@ export const getNameAndLabelsFromRecords = (
     }
   }
 
-  let name = iri;
+  let name = formatGraphValue(node, prefixes);
   for (const predicate of namePredicates) {
-    const value = firstByPredicate.get(predicate);
-    if (value != null && value !== "") {
-      name = value;
+    const newName = firstByPredicate.get(predicate);
+    if (newName != null && newName !== "") {
+      name = newName;
       break;
     }
   }
-  name = getPrefixedIri(name, prefixes);
   return { name, labels };
-};
-
-export type NameAndLabels = {
-  name: string;
-  labels: string[];
 };
 
 export const getNameAndLabels = async (
   session: Session,
-  iri: string,
+  nodeValue: GraphVisNodeValue,
   namePredicates: string[],
   labelsPredicate: string,
   prefixes: Record<string, string> = {}
 ): Promise<NameAndLabels> => {
-  const query = `SELECT ?p ?o WHERE { ${iri} ?p ?o . }`;
-  const result = session.run(query);
+  const query = `SELECT ?p ?o WHERE { ?node ?p ?o . }`;
+  const result = session.run(query, { node: nodeValue });
   const records = await result.records();
 
-  const { name, labels } = getNameAndLabelsFromRecords(iri, records, namePredicates, labelsPredicate, prefixes);
-  return { name, labels };
+  return getNameAndLabelsFromRecords(nodeValue, records, namePredicates, labelsPredicate, prefixes);
 };
 
 export const getNodesNamesAndLabels = async (
   session: Session,
-  iris: string[],
+  nodeValues: GraphVisNodeValue[],
   namePredicates: string[],
   labelsPredicate: string,
   prefixes: Record<string, string> = {}
 ): Promise<Map<string, NameAndLabels>> => {
-  const iriValues = iris.join(" ");
+  const iriValues = nodeValues.map((iri) => `<${iri}>`).join(" ");
   const query = `
     SELECT ?subject ?p ?o
     WHERE {
@@ -103,73 +95,74 @@ export const getNodesNamesAndLabels = async (
   }
 
   const resultMap = new Map<string, NameAndLabels>();
-  for (const iri of iris) {
-    const iriRecords = byIri.get(iri) || [];
-    const { name, labels } = getNameAndLabelsFromRecords(iri, iriRecords, namePredicates, labelsPredicate, prefixes);
-    resultMap.set(iri, { name, labels });
+  for (const node of nodeValues) {
+    const iriRecords = byIri.get(node.toString()) || [];
+    const { name, labels } = getNameAndLabelsFromRecords(node, iriRecords, namePredicates, labelsPredicate, prefixes);
+    resultMap.set(getGraphValueId(node), { name, labels });
   }
 
   return resultMap;
 }
 
-export type IriDescription = {
-  iri: string;
+export type NodeDescription = {
+  nodeValue: GraphVisNodeValue;
   name: string;
   type: string;
   labels: string[];
   literals: Record<string, any>;
 };
 
-export const getIriDescription = async (
+export const getNodeDescription = async (
   session: Session,
-  iri: string,
+  nodeValue: GraphVisNodeValue,
   namePredicates: string[],
   labelsPredicate: string,
   prefixMap: Record<string, string> = {}
-): Promise<IriDescription | null> => {
-  const query = `SELECT ?p ?o WHERE { ${iri} ?p ?o . }`;
-  const result = session.run(query);
+): Promise<NodeDescription | null> => {
+  const query = `SELECT ?p ?o WHERE { ?node ?p ?o . }`;
+  const result = session.run(query, { node: nodeValue });
   const records = await result.records();
 
-  const literals = records.reduce((acc: Record<string, any>, record: any) => {
-    const predicate = record.get("p").toString();
-    const prefixedPredicate = getPrefixedIri(predicate, prefixMap);
+  const literals = records.reduce((acc: Record<string, any>, record: MdbRecord) => {
+    const predicate = formatGraphValue(record.get("p"), prefixMap);
     const object = record.get("o");
     if (object instanceof IRI) {
       return acc;
     }
-    acc[prefixedPredicate] = object.toString();
+    acc[predicate] = object.toString();
     return acc;
   }, {});
 
-  const { name, labels } = getNameAndLabelsFromRecords(iri, records, namePredicates, labelsPredicate, prefixMap);
-  return { iri, name, type: "IRI", labels, literals };
+  const { name, labels } = getNameAndLabelsFromRecords(nodeValue, records, namePredicates, labelsPredicate, prefixMap);
+  return { nodeValue, name, type: "IRI", labels, literals };
 };
 
 export type LinkAndNeighbor = {
   neighborId: string;
-  edgeId: string;
-  edgeIri: string;
-  edgeName: string;
+  neighborValue: GraphVisNodeValue;
   neighborLabels: string[];
   neighborName: string;
+  edgeId: string;
+  edgeValue: GraphVisEdgeValue;
+  edgeName: string;
 };
 
 export const getLinksAndNeighbors = async (
   session: Session,
-  iri: string,
+  nodeValue: GraphVisNodeValue,
   namePredicates: string[],
   labelsPredicate: string,
   prefixes: Record<string, string> = {},
   outgoing: boolean,
 ): Promise<LinkAndNeighbor[]> => {
   // TODO: Handle blank nodes?
+  const nodeId = getGraphValueId(nodeValue);
   let query;
   if (outgoing) {
     query = `
       SELECT ?predicate ?neighbor ?neighborPredicate ?neighborObject
       WHERE {
-        ${iri} ?predicate ?neighbor .
+        ?node ?predicate ?neighbor .
         FILTER(isIRI(?neighbor))
         OPTIONAL {
           ?neighbor ?neighborPredicate ?neighborObject .
@@ -180,7 +173,7 @@ export const getLinksAndNeighbors = async (
     query = `
       SELECT ?predicate ?neighbor ?neighborPredicate ?neighborObject
       WHERE {
-        ?neighbor ?predicate ${iri} .
+        ?neighbor ?predicate ?node .
         OPTIONAL {
           ?neighbor ?neighborPredicate ?neighborObject .
         }
@@ -188,32 +181,33 @@ export const getLinksAndNeighbors = async (
     `;
   }
 
-  const result = session.run(query);
+  const result = session.run(query, { node: nodeValue });
   const records = await result.records();
 
-  const byNeighbor = new Map<string, any[]>();
+  const byNeighbor = new Map<string, MdbRecord[]>();
   for (const record of records) {
-    const neighbor = record.get("neighbor").toString();
-    if (!byNeighbor.has(neighbor)){
-      byNeighbor.set(neighbor, []);
+    const neighborId = getGraphValueId(record.get("neighbor"));
+    if (!byNeighbor.has(neighborId)){
+      byNeighbor.set(neighborId, []);
     }
-    byNeighbor.get(neighbor)!.push(record);
+    byNeighbor.get(neighborId)!.push(record);
   }
 
   const linksAndNeighbors: LinkAndNeighbor[] = [];
   for (const [neighborId, records] of byNeighbor.entries()) {
     const firstRecord = records[0];
+    
+    const neighborValue = firstRecord.get("neighbor");
+    const edgeValue = firstRecord.get("predicate");
+    const edgeId = `${outgoing ? nodeId : neighborId}-${getGraphValueId(edgeValue)}-${outgoing ? neighborId : nodeId}`;
+    const edgeName = formatGraphValue(edgeValue, prefixes);
 
-    const edgeIri = firstRecord.get("predicate").toString();
-    const edgeId = `${outgoing ? iri : neighborId}-${edgeIri}-${outgoing ? neighborId : iri}`;
-    const edgeName = getPrefixedIri(edgeIri, prefixes);
-
-    let neighborName = getPrefixedIri(neighborId, prefixes);
+    let neighborName = formatGraphValue(neighborValue, prefixes);
     let neighborLabels: string[] = [];
 
     if (firstRecord.get("neighborObject") != null) {
       const { name, labels } = getNameAndLabelsFromRecords(
-        neighborId,
+        neighborValue,
         records,
         namePredicates,
         labelsPredicate,
@@ -226,11 +220,12 @@ export const getLinksAndNeighbors = async (
 
     linksAndNeighbors.push({
       neighborId,
-      edgeId,
-      edgeIri,
-      edgeName,
-      neighborName,
+      neighborValue,
       neighborLabels,
+      neighborName,
+      edgeId,
+      edgeValue,
+      edgeName,
     });
   }
 
@@ -239,20 +234,21 @@ export const getLinksAndNeighbors = async (
 
 export type TextSearchItem = {
   category: string;
-  id: string;
-  name: string;
+  nodeValue: GraphVisNodeValue;
+  result: string | undefined;
 };
 
-export const textSearchNodes = async (session: Session, text: string, searchPredicates: string[], limit: number = 50) => {
-  const valuesStatement = `VALUES ?predicate { ${searchPredicates.join(" ")} }`;
-
-  let query = `
+export const textSearchNodes = async (
+  session: Session, searchText: string, searchPredicates: string[], limit: number = 50
+): Promise<TextSearchItem[]> => {
+  const valuesStatement = `VALUES ?predicate { ${searchPredicates.map(iri => `<${iri}>`).join(" ")} }`;
+  const query = `
     SELECT ?subject ?predicate ?object
     WHERE {
       {
         ${valuesStatement}
         ?subject ?predicate ?object .
-        FILTER(REGEX(STR(?object), R"(^|\\s)(${text})", "i"))
+        FILTER(REGEX(STR(?object), ?objectValueRegex, "i"))
       }
       UNION
       {
@@ -260,28 +256,32 @@ export const textSearchNodes = async (session: Session, text: string, searchPred
           SELECT DISTINCT ?subject
           WHERE {
             ?subject ?p ?o .
-            FILTER(REGEX(STR(?subject), R"(${text})", "i"))
+            FILTER(REGEX(STR(?subject), ?subjectIriRegex, "i"))
           }
         }
         BIND("IRI" AS ?predicate)
-        BIND(?subject AS ?object)
       }
     }
     LIMIT ${limit}
   `;
 
-  const result = session.run(query);
+  const objectValueRegex = `(^|\\s)${searchText}`;
+  const subjectIriRegex = searchText;
+
+  const result = session.run(query, { objectValueRegex, subjectIriRegex });
   const records = await result.records();
 
-  return records.map((record: any) => {
-    const subjectId = record.get("subject").toString();
-    const name = record.get("object").toString();
+  return records.map((record: MdbRecord) => {
+    const nodeValue = record.get("subject");
+    const nodeId = getGraphValueId(nodeValue);
+    const result = record.get("object")?.toString();
     const category = record.get("predicate").toString();
 
     return {
       category,
-      id: subjectId,
-      name,
+      nodeValue,
+      nodeId,
+      result,
     };
   });
 };

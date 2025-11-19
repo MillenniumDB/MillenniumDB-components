@@ -1,20 +1,20 @@
-import type { Driver, Result, Session, Record as MDBRecord } from "@millenniumdb/driver";
-import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
+import type { Driver, Result, Session } from "@millenniumdb/driver";
+import type { GraphVisData, GraphVisNode, GraphVisNodeValue } from "./types/graph";
 import { useCallback, useRef, type CSSProperties } from "react";
 import type { GraphSettings } from "./components/settings/settings";
 import type { GraphColorConfig } from "./hooks/use-graph-colors";
 import { GraphExplorer } from "./graph-explorer";
 import type { GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
-import type { FetchNodesItem } from "./components/node-search/node-search";
 import { SPARQLSideBarContent } from "./components/side-bar/sparql-sidebar-content";
-import { getIriDescription } from "./utils/node-utils";
 import { SPARQLSettingsContent } from "./components/settings/sparql-settings-content";
-import { getLinksAndNeighbors, getNameAndLabels, getNodesNamesAndLabels, getPrefixedIri, textSearchNodes } from "./utils/sparql-graph-utils";
+import { getLinksAndNeighbors, getNameAndLabels, getNodesNamesAndLabels, textSearchNodes } from "./utils/sparql-graph-utils";
+import { formatGraphValue, getGraphValueId } from "./utils/node-id-utils";
+import type { FetchNodesItem } from "./components/node-search/node-search";
 
 export type SPARQLGraphExplorerProps = {
   driver: Driver;
-  initialGraphData?: MDBGraphData;
+  initialGraphData?: GraphVisData;
   initialSettings?: GraphSettings;
   style?: CSSProperties;
   className?: string;
@@ -28,7 +28,7 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
   const fetchNodesResultRef = useRef<Result | null>(null);
 
   const handleNodeExpand = useCallback(
-    async (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean, settings: GraphSettings) => {
+    async (node: NodeObject<GraphVisNode>, event: MouseEvent, outgoing: boolean, settings: GraphSettings) => {
       if (!graphAPI.current) return;
       let session;
 
@@ -37,26 +37,35 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
 
         const linksAndNeighbors = await getLinksAndNeighbors(
           session,
-          node.id,
+          node.value,
           settings.nameKeys,
           settings.labelsKey!,
           settings.prefixes,
           outgoing
         );
         for (const linkAndNeighbor of linksAndNeighbors) {
-          const { neighborId, edgeId, edgeIri, edgeName, neighborLabels, neighborName } = linkAndNeighbor;
+          const {
+            neighborId,
+            neighborValue,
+            neighborName,
+            neighborLabels,
+            edgeId,
+            edgeValue,
+            edgeName
+          } = linkAndNeighbor;
           graphAPI.current.addNode({
             id: neighborId,
+            value: neighborValue,
             name: neighborName,
-            types: neighborLabels,
+            labels: neighborLabels,
           });
 
-          const source = outgoing ? node.id : neighborId;
-          const target = outgoing ? neighborId : node.id;
+          const source = outgoing ? getGraphValueId(node.value) : neighborId;
+          const target = outgoing ? neighborId : getGraphValueId(node.value);
 
           graphAPI.current.addLink({
             id: edgeId,
-            iri: edgeIri,
+            value: edgeValue,
             name: edgeName,
             source,
             target,
@@ -96,18 +105,25 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
     }
   }, []);
 
-  const handleSearchSelection = useCallback(async (iri: string, settings: GraphSettings) => {
+  const handleSearchSelection = useCallback(async (nodeValue: GraphVisNodeValue, settings: GraphSettings) => {
     if (!graphAPI.current) return;
-    
+
     let session;
     try {
       session = driver.session();
 
-      const { name, labels } = await getNameAndLabels(session, iri, settings.nameKeys, settings.labelsKey!, settings.prefixes);
+      const { name, labels } = await getNameAndLabels(
+        session,
+        nodeValue,
+        settings.nameKeys,
+        settings.labelsKey!,
+        settings.prefixes
+      );
       graphAPI.current.addNode({
-        id: iri,
+        id: getGraphValueId(nodeValue),
+        value: nodeValue,
         name,
-        types: labels,
+        labels,
       });
     } catch (error) {
       console.error("Error in handleSearchSelection:", error);
@@ -118,8 +134,8 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
   }, []);
 
   const handleRenderSidebarContent = (
-    selectedNodeIds: Set<NodeId>,
-    selectedLinkIds: Set<LinkId>,
+    selectedNodeIds: Set<string>,
+    selectedLinkIds: Set<string>,
     getColorForLabel: (label: string) => string,
     settings: GraphSettings
   ) => {
@@ -154,34 +170,29 @@ export const SPARQLGraphExplorer = ({ driver, initialGraphData, ...props }: SPAR
       if (!graphAPI.current) return;
 
       // Update nodes names and labels
-      const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
+      const nodeValues = graphAPI.current.graphData.nodes.map((n) => n.value);
       const session = driver.session();
       const updates = await getNodesNamesAndLabels(
         session,
-        nodeIds,
+        nodeValues,
         settings.nameKeys,
         settings.labelsKey!,
         settings.prefixes
       );
 
       for (const [id, { name, labels }] of updates.entries()) {
-        graphAPI.current.updateNode({
-          id,
-          name,
-          types: labels,
-        });
+        graphAPI.current.updateNode(id, name, labels);
       }
 
       // Update links names
-      const linkIdsAndNames = graphAPI.current.graphData.links.map((l) => ({ id: l.id, iri: l.iri }));
-      const linkNamesUpdates = linkIdsAndNames.map(({ id, iri }) => {
-        if (!iri) return { id, name: id };
-        const newName = getPrefixedIri(iri, settings.prefixes!);
+      const links = graphAPI.current.graphData.links;
+      const linkNamesUpdates = links.map(({ id, value }) => {
+        const newName = formatGraphValue(value, settings.prefixes!);
         return { id, name: newName };
       });
 
       for (const u of linkNamesUpdates) {
-        graphAPI.current.updateLinkName(u.name, u.id);
+        graphAPI.current.updateLinkName(u.id, u.name);
       }
 
       graphAPI.current.update();

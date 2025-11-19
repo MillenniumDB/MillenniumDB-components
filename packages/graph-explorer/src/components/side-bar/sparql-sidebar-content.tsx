@@ -1,18 +1,27 @@
 import { Badge, Box, Code, Flex, Loader, Text, Title } from "@mantine/core";
-import type { LinkId, NodeId } from "../../types/graph";
 import type { GraphAPI } from "../../hooks/use-graph-api";
 import type { Driver } from "@millenniumdb/driver";
 import type { GraphSettings } from "../settings/settings";
 import { useEffect, useState } from "react";
-import { getIriDescription, type IriDescription } from "../../utils/sparql-graph-utils";
+import { getNodeDescription } from "../../utils/sparql-graph-utils";
+import { formatGraphValue } from "../../utils/node-id-utils";
+import type { GraphVisNodeValue } from "../../types/graph";
 
 type SPARQLSideBarContentProps = {
-  selectedNodeIds: Set<NodeId>;
-  selectedLinkIds: Set<LinkId>;
+  selectedNodeIds: Set<string>;
+  selectedLinkIds: Set<string>;
   getColorForLabel: (label: string) => string;
   settings: GraphSettings;
   graphAPI: React.RefObject<GraphAPI | null>;
   driver: Driver;
+};
+
+type NodeDescription = {
+  nodeValue: GraphVisNodeValue;
+  name: string;
+  type: string;
+  labels: string[];
+  literals: Record<string, any>;
 };
 
 export const SPARQLSideBarContent = ({
@@ -23,12 +32,12 @@ export const SPARQLSideBarContent = ({
   graphAPI,
   driver,
 }: SPARQLSideBarContentProps) => {
-  const [description, setDescription] = useState<IriDescription | null>(null);
+  const [description, setDescription] = useState<NodeDescription | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const describeNode = async (nodeId: NodeId): Promise<void> => {
+    const describeNode = async (nodeValue: GraphVisNodeValue): Promise<void> => {
       setLoading(true);
       setError(null);
       setDescription(null);
@@ -36,8 +45,8 @@ export const SPARQLSideBarContent = ({
       try {
         const session = driver.session();
         const labelsProperty = settings.labelsKey ?? "";
-        const iriDescription = await getIriDescription(session, nodeId, settings.nameKeys, labelsProperty, settings.prefixes);
-        setDescription(iriDescription);
+        const nodeDescription = await getNodeDescription(session, nodeValue, settings.nameKeys, labelsProperty, settings.prefixes);
+        setDescription(nodeDescription);
       } catch (err) {
         setError(String(err));
       } finally {
@@ -52,8 +61,11 @@ export const SPARQLSideBarContent = ({
       return;
     }
 
-    const [nodeId] = [...selectedNodeIds];
-    describeNode(nodeId);
+    const nodeId = [...selectedNodeIds][0];
+    const nodeValue = graphAPI.current?.getNode(nodeId)?.value;
+    if (nodeValue) {
+      describeNode(nodeValue);
+    }
   }, [selectedNodeIds, settings, driver]);
 
   if (selectedNodeIds.size === 0 && selectedLinkIds.size === 0) {
@@ -93,9 +105,9 @@ export const SPARQLSideBarContent = ({
           <Title order={2} style={{ wordBreak: "break-word" }}>
             {description.name}
           </Title>
-          {description.name !== description.iri && (
+          {description.name !== formatGraphValue(description.nodeValue) && (
             <Text c="dimmed" size="sm">
-              {description.iri}
+              {formatGraphValue(description.nodeValue)}
             </Text>
           )}
         </Box>
