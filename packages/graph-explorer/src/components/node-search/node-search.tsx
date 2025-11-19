@@ -2,20 +2,21 @@ import { useEffect, useState } from "react";
 import classes from "./node-search.module.css";
 
 import { Box, CloseButton, Combobox, Loader, TextInput, Text, useCombobox } from "@mantine/core";
-import type { MDBGraphNode } from "../../types/graph";
 import { IconSearch } from "@tabler/icons-react";
 import type { GraphSettings } from "../settings/settings";
+import { formatGraphValue, getGraphValueId } from "../../utils/node-id-utils";
+import type { GraphVisNodeValue } from "../../types/graph";
 
 export type FetchNodesItem = {
   category: string;
-  id: string;
-  name: string;
+  nodeValue: GraphVisNodeValue;
+  result: string | undefined;
 };
 
 export type NodeSearchProps = {
   fetchNodes?: ((query: string, settings: GraphSettings) => Promise<FetchNodesItem[]>) | undefined;
   abortFetchNodes?: (() => Promise<void>) | undefined;
-  onSearchSelection?: ((nodeId: string, settings: GraphSettings) => Promise<void>) | undefined;
+  onSearchSelection?: ((nodeValue: GraphVisNodeValue, settings: GraphSettings) => Promise<void>) | undefined;
   settings: GraphSettings;
 };
 
@@ -31,10 +32,10 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, set
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
 
-  const handleOptionsSubmit = (nodeId: string) => {
-    const selectedItem = data.find(({id}) => id === nodeId);
+  const handleOptionsSubmit = (selectedNodeId: string) => {
+    const selectedItem = data.find(({ nodeValue }) => getGraphValueId(nodeValue) === selectedNodeId);
     if (selectedItem) {
-      onSearchSelection?.(selectedItem.id, settings);
+      onSearchSelection?.(selectedItem.nodeValue, settings);
       setValue("");
       setData([]);
     }
@@ -106,14 +107,14 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, set
     }
   }, [debouncedQuery]);
 
-  const groupedData = data.reduce<Record<string, { id: string; name: string }[]>>(
-    (acc, { id, name, category }) => {
+  const groupedData = data.reduce<Record<string, { nodeValue: GraphVisNodeValue; result: string | undefined }[]>>(
+    (acc, { nodeValue, result, category }) => {
       if (!acc[category]) {
         acc[category] = [];
       }
       acc[category].push({
-        id,
-        name,
+        nodeValue,
+        result,
       });
       return acc;
     },
@@ -122,14 +123,20 @@ export const NodeSearch = ({ fetchNodes, onSearchSelection, abortFetchNodes, set
 
   const options = Object.entries(groupedData).map(([category, items], categoryIdx) => (
     <Combobox.Group key={categoryIdx} label={category}>
-      {items.map(({ id, name }, nodeIdx) => (
-        <Combobox.Option key={nodeIdx} value={id}>
-          <Text size="sm" fw={500}>
-            {name}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {id}
-          </Text>
+      {items.map(({ nodeValue, result }, nodeIdx) => (
+        <Combobox.Option key={nodeIdx} value={getGraphValueId(nodeValue)}>
+          {result !== undefined ? (
+            <>
+              <Text size="sm" fw={500}>
+                {result}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {formatGraphValue(nodeValue)}
+              </Text>
+            </>
+          ) : (
+            <Text size="sm">{nodeValue.toString()}</Text>
+          )}
         </Combobox.Option>
       ))}
     </Combobox.Group>

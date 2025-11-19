@@ -4,7 +4,7 @@ import { rgba, useMantineColorScheme, useMantineTheme, type MantineTheme } from 
 import { merge } from "lodash";
 
 export type GraphColorConfig = {
-  types: string[];
+  labels: string[];
   node: {
     fill: string;
     border: {
@@ -28,7 +28,7 @@ export type GraphColorConfig = {
   background: string;
 };
 
-const DEFAULT_TYPE_PALETTE = [
+const DEFAULT_LABEL_PALETTE = [
   "#d9534f", // strong red
   "#5bc0de", // sky blue
   "#f0ad4e", // warm gold
@@ -66,7 +66,7 @@ function makeDefaultGraphColors(theme: MantineTheme, colorScheme: string): Graph
   const linkSelected = theme.colors[theme.primaryColor][primaryShade];
 
   return {
-    types: DEFAULT_TYPE_PALETTE,
+    labels: DEFAULT_LABEL_PALETTE,
     node: {
       fill: nodeFill,
       border: {

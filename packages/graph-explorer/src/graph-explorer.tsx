@@ -25,30 +25,31 @@ import { Toolbar, type ToolId } from "./components/toolbar/toolbar";
 import { GRAPH_DIMENSIONS, LINK_DIMENSIONS, NODE_DIMENSIONS } from "./constants/dimensions";
 import { useGraphAPI, type GraphAPI } from "./hooks/use-graph-api";
 import { useResizeObserver } from "./hooks/use-resize-observer";
-import type { LinkId, MDBGraphData, MDBGraphLink, MDBGraphNode, NodeId, LabelBox } from "./types/graph";
+import type { GraphVisEdge, GraphVisNode, GraphVisNodeValue, GraphVisData, NodeLabelBox } from "./types/graph";
 import { NodeSearch, type FetchNodesItem } from "./components/node-search/node-search";
 import { SideBar } from "./components/side-bar/side-bar";
 import clsx from "clsx";
 import { Settings, type GraphSettings } from "./components/settings/settings";
 import { useGraphColors, type GraphColorConfig } from "./hooks/use-graph-colors";
+import { formatGraphValue } from "./utils/node-id-utils";
 
-export type OnNodeExpand = (node: NodeObject<MDBGraphNode>, event: MouseEvent) => void;
+export type OnNodeExpand = (node: NodeObject<GraphVisNode>, event: MouseEvent) => void;
 
 export type GraphExplorerProps = {
   style?: CSSProperties;
   className?: string;
   graphColors?: Partial<GraphColorConfig>;
-  initialGraphData?: MDBGraphData | undefined;
+  initialGraphData?: GraphVisData | undefined;
   initialSettings?: GraphSettings | undefined;
   onNodeExpand?: (
-    node: NodeObject<MDBGraphNode>,
+    node: NodeObject<GraphVisNode>,
     event: MouseEvent,
     outgoing: boolean,
     settings: GraphSettings
   ) => void;
   fetchNodes?: (query: string, settings: GraphSettings) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
-  onSearchSelection?: (nodeId: string, settings: GraphSettings) => Promise<void>;
+  onSearchSelection?: (nodeValue: GraphVisNodeValue, settings: GraphSettings) => Promise<void>;
   renderSettingsContent?: (
     settings: GraphSettings,
     onSave: (newSettings: GraphSettings) => void,
@@ -56,8 +57,8 @@ export type GraphExplorerProps = {
   ) => ReactNode;
   onSettingsChange?: (settings: GraphSettings) => void;
   renderSideBarContent?: (
-    selectedNodeIds: Set<NodeId>,
-    selectedLinkIds: Set<LinkId>,
+    selectedNodeIds: Set<string>,
+    selectedLinkIds: Set<string>,
     getColorForLabel: (label: string) => string,
     settings: GraphSettings
   ) => ReactNode;
@@ -95,7 +96,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     const { width, height } = useResizeObserver(wrapperRef);
 
     // Force graph reference
-    const fgRef = useRef<ForceGraphMethods<MDBGraphNode, MDBGraphLink>>(undefined);
+    const fgRef = useRef<ForceGraphMethods<GraphVisNode, GraphVisEdge>>(undefined);
 
     // Graph colors
     const computedGraphColors = useGraphColors(graphColors);
@@ -110,15 +111,15 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     const [activeToolId, setActiveToolId] = useState<ToolId>("move");
 
     // Node/Link interaction
-    const [hoveredNodeId, setHoveredNodeId] = useState<NodeId | null>(null);
-    const [hoveredLinkId, setHoveredLinkId] = useState<LinkId | null>(null);
+    const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+    const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
 
-    const [selectedNodeIds, setSelectedNodeIds] = useState<Set<NodeId>>(new Set());
-    const [selectedLinkIds, setSelectedLinkIds] = useState<Set<LinkId>>(new Set());
+    const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+    const [selectedLinkIds, setSelectedLinkIds] = useState<Set<string>>(new Set());
 
     const [rectangularSelection, setRectangularSelection] = useState<{
       isMultiSelect: boolean;
-      nodeIds: Set<NodeId>;
+      nodeIds: Set<string>;
     }>({
       isMultiSelect: false,
       nodeIds: new Set(),
@@ -128,7 +129,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     const getColorForLabel = useCallback(
       (label: string) => {
         if (!labelColorMap.current.has(label)) {
-          const nextColor = computedGraphColors.types[labelColorMap.current.size % computedGraphColors.types.length];
+          const nextColor = computedGraphColors.labels[labelColorMap.current.size % computedGraphColors.labels.length];
           labelColorMap.current.set(label, nextColor);
         }
         return labelColorMap.current.get(label)!;
@@ -161,8 +162,8 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Render nodes
     const handleNodeCanvasObject = useCallback(
-      (node: NodeObject<MDBGraphNode>, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const { id, x, y, types, name } = node;
+      (node: NodeObject<GraphVisNode>, ctx: CanvasRenderingContext2D, globalScale: number) => {
+        const { id, x, y, labels, name } = node;
 
         if (x === undefined || y === undefined) return;
 
@@ -180,19 +181,19 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         const fontSize = Math.max(GRAPH_DIMENSIONS.fontSize / globalScale, 1);
 
         // Draw the slices
-        const numSlices = types?.length ?? 0;
+        const numSlices = labels?.length ?? 0;
         if (numSlices === 0) {
-          // no types
+          // no labels
           ctx.beginPath();
           ctx.arc(x, y, NODE_DIMENSIONS.radius, 0, 2 * Math.PI);
           ctx.fillStyle = computedGraphColors.node.fill;
           ctx.fill();
         } else {
-          // one or more types
+          // one or more labels
           const sliceAngle = (2 * Math.PI) / numSlices;
 
           for (let i = 0; i < numSlices; ++i) {
-            const color = getColorForLabel(types![i]);
+            const color = getColorForLabel(labels![i]);
             const startAngle = sliceAngle * i;
             const endAngle = startAngle + sliceAngle;
 
@@ -238,14 +239,14 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         const boxX = x - bgWidth / 2;
         const boxY = y + NODE_DIMENSIONS.radius + NODE_DIMENSIONS.nameVerticalOffsetPx;
 
-        node.labelBox = {
+        node.nodeLabelBox = {
           x: boxX,
           y: boxY,
           width: bgWidth,
           height: bgHeight,
         };
 
-        if (node.showLabel === false) {
+        if (node.showNodeLabel === false) {
           ctx.restore();
           return;
         }
@@ -267,14 +268,14 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Node label on hover
     const nodeLabel = useCallback(
-      (node: NodeObject<MDBGraphNode>) => {
-        const { id, name } = node;
+      (node: NodeObject<GraphVisNode>) => {
+        const { value, name } = node;
         const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const safeId = id.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const safeValue = formatGraphValue(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
         return `
           <div>
             <strong>${safeName}</strong><br/>
-            ${safeName !== safeId ? `<span>id: ${safeId}</span>` : ""}
+            ${safeName !== safeValue ? `<span>${safeValue}</span>` : ""}
           </div>
         `;
       },
@@ -282,7 +283,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     );
 
     // map LinkIds to their corresponding curvature
-    const curvatureMap = useMemo<Map<LinkId, number>>(() => {
+    const curvatureMap = useMemo<Map<string, number>>(() => {
       const numConnectionsMap: Map<string, number> = new Map();
       const numSelfConnectionsMap: Map<string, number> = new Map();
 
@@ -324,7 +325,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Link curvature
     const handleLinkCurvature = useCallback(
-      (link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
+      (link: LinkObject<GraphVisNode, GraphVisEdge>) => {
         const { id } = link;
         return curvatureMap.get(id) ?? 0;
       },
@@ -333,7 +334,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Link width/thickness
     const handleLinkWidth = useCallback(
-      (link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
+      (link: LinkObject<GraphVisNode, GraphVisEdge>) => {
         const { id } = link;
         return id === hoveredLinkId ? 2 : 1;
       },
@@ -342,7 +343,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Link color
     const handleLinkColor = useCallback(
-      (link: LinkObject<MDBGraphNode, MDBGraphLink>) => {
+      (link: LinkObject<GraphVisNode, GraphVisEdge>) => {
         const { id } = link;
         const isDimmed = (hoveredNodeId !== null || hoveredLinkId !== null) && !link.isHighlighted;
 
@@ -363,12 +364,12 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Render links
     const handleLinkCanvasObject = useCallback(
-      (link: LinkObject<MDBGraphNode, MDBGraphLink>, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      (link: LinkObject<GraphVisNode, GraphVisEdge>, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const { id, name, source, target } = link as {
-          id: LinkId;
+          id: string;
           name: string;
-          source: NodeObject<MDBGraphNode>;
-          target: NodeObject<MDBGraphNode>;
+          source: NodeObject<GraphVisNode>;
+          target: NodeObject<GraphVisNode>;
         };
 
         // not transformed to LinkObject yet
@@ -441,14 +442,14 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         const bgWidth = Math.ceil(textWidth + namePadding);
         const bgHeight = Math.ceil(fontSize + namePadding);
 
-        link.labelBox = {
+        link.nodeLabelBox = {
           x: bx - bgWidth / 2,
           y: by - bgHeight / 2,
           width: bgWidth,
           height: bgHeight,
         };
 
-        if (link.showLabel === false) {
+        if (link.showNodeLabel === false) {
           ctx.restore();
           return;
         }
@@ -470,15 +471,14 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Link label on hover
     const linkLabel = useCallback(
-      (link: LinkObject<MDBGraphLink>) => {
-        const name = link.name;
-        const id = link.iri ? link.iri : link.id;
+      (link: LinkObject<GraphVisEdge>) => {
+        const { name, value } = link;
         const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const safeId = id.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const safeValue = formatGraphValue(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
         return `
           <div>
             <strong>${safeName}</strong><br/>
-            ${safeName !== safeId ? `<span>id: ${safeId}</span>` : ""}
+            ${safeName !== safeValue ? `<span>${safeValue}</span>` : ""}
           </div>
         `;
       },
@@ -486,7 +486,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     );
 
     // Node hover interaction
-    const handleNodeHover = useCallback((node: NodeObject<MDBGraphNode> | null) => {
+    const handleNodeHover = useCallback((node: NodeObject<GraphVisNode> | null) => {
       if (node) {
         setHoveredNodeId(node.id);
         node.isHighlighted = true;
@@ -500,15 +500,15 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       }
     }, [graphAPI]);
 
-    const handleLinkHover = useCallback((link: LinkObject<MDBGraphNode, MDBGraphNode> | null) => {
+    const handleLinkHover = useCallback((link: LinkObject<GraphVisNode, GraphVisNode> | null) => {
       if (link) {
         setHoveredLinkId(link.id);
         link.isHighlighted = true;
         if (link.source) {
-          (link.source as NodeObject<MDBGraphNode>).isHighlighted = true;
+          (link.source as NodeObject<GraphVisNode>).isHighlighted = true;
         }
         if (link.target) {
-          (link.target as NodeObject<MDBGraphNode>).isHighlighted = true;
+          (link.target as NodeObject<GraphVisNode>).isHighlighted = true;
         }
       } else {
         setHoveredLinkId(null);
@@ -518,7 +518,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     }, [graphAPI]);
 
     const handleNodeClick = useCallback(
-      (node: NodeObject<MDBGraphNode>, event: MouseEvent) => {
+      (node: NodeObject<GraphVisNode>, event: MouseEvent) => {
         switch (activeToolId) {
           case "move": {
             if (event.altKey || event.ctrlKey || event.shiftKey) {
@@ -561,7 +561,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     );
 
     const handleLinkClick = useCallback(
-      (link: LinkObject<MDBGraphNode, MDBGraphLink>, event: MouseEvent) => {
+      (link: LinkObject<GraphVisNode, GraphVisEdge>, event: MouseEvent) => {
         switch (activeToolId) {
           case "move": {
             if (event.altKey || event.ctrlKey || event.shiftKey) {
@@ -616,7 +616,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     // Node dragging
     const handleNodeDrag = useCallback(
-      (node: NodeObject<MDBGraphNode>, translate: { x: number; y: number }) => {
+      (node: NodeObject<GraphVisNode>, translate: { x: number; y: number }) => {
         const { id } = node;
         if (selectedNodeIds.has(id)) {
           for (const selectedNodeId of selectedNodeIds) {
@@ -635,7 +635,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     );
 
     const handleNodeDragEnd = useCallback(
-      (node: NodeObject<MDBGraphNode>) => {
+      (node: NodeObject<GraphVisNode>) => {
         if (!node.x || !node.y) return;
         // fix node after drag
         node.fx = node.x;
@@ -668,7 +668,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         const maxGraphCoords = fgRef.current.screen2GraphCoords(maxX, maxY);
 
         setRectangularSelection((prev) => {
-          const nextNodeIds: Set<NodeId> = new Set();
+          const nextNodeIds: Set<string> = new Set();
           for (const node of graphAPI.graphData.nodes) {
             const { id, x, y } = node;
 
@@ -693,7 +693,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         setSelectedNodeIds(
           (prevSelectedNodeIds) => new Set([...prevSelectedNodeIds, ...prevRectangularSelection.nodeIds])
         );
-        const next = { ...prevRectangularSelection, nodeIds: new Set() as Set<NodeId> };
+        const next = { ...prevRectangularSelection, nodeIds: new Set() as Set<string> };
         return next;
       });
 
@@ -701,7 +701,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     }, []);
 
     // Recompute label bounding boxes and visibility
-    const boxesOverlap = useCallback((a: LabelBox, b: LabelBox): boolean =>
+    const boxesOverlap = useCallback((a: NodeLabelBox, b: NodeLabelBox): boolean =>
       a.x < b.x + b.width &&
       a.x + a.width > b.x &&
       a.y < b.y + b.height &&
@@ -709,17 +709,17 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     , []);
 
     const updateLabelVisibility = useCallback(
-      (nodesAndLinks: (NodeObject<MDBGraphNode> | LinkObject<MDBGraphLink>)[]) => {
-        nodesAndLinks.forEach((n) => (n.showLabel = true));
+      (nodesAndLinks: (NodeObject<GraphVisNode> | LinkObject<GraphVisEdge>)[]) => {
+        nodesAndLinks.forEach((n) => (n.showNodeLabel = true));
 
         for (let i = 0; i < nodesAndLinks.length; i++) {
           const a = nodesAndLinks[i];
-          if (!a.showLabel) continue;
+          if (!a.showNodeLabel) continue;
 
           for (let j = i + 1; j < nodesAndLinks.length; j++) {
             const b = nodesAndLinks[j];
-            if (a.labelBox && b.labelBox && boxesOverlap(a.labelBox, b.labelBox)) {
-              b.showLabel = false;
+            if (a.nodeLabelBox && b.nodeLabelBox && boxesOverlap(a.nodeLabelBox, b.nodeLabelBox)) {
+              b.showNodeLabel = false;
             }
           }
         }
@@ -751,7 +751,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
     return (
       <Box ref={wrapperRef} className={clsx(classes.root, className)} style={style}>
-        <ForceGraph<MDBGraphNode, MDBGraphLink>
+        <ForceGraph<GraphVisNode, GraphVisEdge>
           ref={fgRef}
           graphData={graphAPI.graphData}
           width={width}

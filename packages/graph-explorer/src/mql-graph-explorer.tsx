@@ -3,17 +3,18 @@ import { GraphExplorer } from "./graph-explorer";
 import { Driver, Result, Session } from "@millenniumdb/driver";
 import { type GraphAPI } from "./hooks/use-graph-api";
 import type { NodeObject } from "react-force-graph-2d";
-import type { LinkId, MDBGraphData, MDBGraphNode, NodeId } from "./types/graph";
+import type { GraphVisData, GraphVisNode, GraphVisNodeValue } from "./types/graph";
 import type { FetchNodesItem } from "./components/node-search/node-search";
 import type { GraphColorConfig } from "./hooks/use-graph-colors";
 import { MQLSideBarContent } from "./components/side-bar/mql-side-bar-content";
 import type { GraphSettings } from "./components/settings/settings";
 import { MQLSettingsContent } from "./components/settings/mql-settings-content";
 import { getLinksNameAndLabels, getNameAndLabels, textSearchNodes } from "./utils/mql-graph-utils";
+import { getGraphValueId } from "./utils/node-id-utils";
 
 export type MQLGraphExplorerProps = {
   driver: Driver;
-  initialGraphData?: MDBGraphData;
+  initialGraphData?: GraphVisData;
   initialSettings?: GraphSettings;
   style?: CSSProperties;
   className?: string;
@@ -27,20 +28,21 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
   const fetchNodesResultRef = useRef<Result | null>(null);
 
   const handleNodeExpand = useCallback(
-    async (node: NodeObject<MDBGraphNode>, event: MouseEvent, outgoing: boolean, settings: GraphSettings) => {
+    async (node: NodeObject<GraphVisNode>, event: MouseEvent, outgoing: boolean, settings: GraphSettings) => {
       if (!graphAPI.current) return;
       let session;
 
       try {
         session = driver.session();
 
-        const linksNameAndLabels = await getLinksNameAndLabels(session, node.id, settings.nameKeys, outgoing);
+        const linksNameAndLabels = await getLinksNameAndLabels(session, node.value, settings.nameKeys, outgoing);
         for (const linkNameAndLabels of linksNameAndLabels) {
-          const { otherId, edgeId, type, labels, name } = linkNameAndLabels;
+          const { otherId, otherValue, edgeId, edgeValue, type, labels, name } = linkNameAndLabels;
           graphAPI.current.addNode({
             id: otherId,
+            value: otherValue,
             name,
-            types: labels,
+            labels,
           });
 
           const source = outgoing ? node.id : otherId;
@@ -48,6 +50,7 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
 
           graphAPI.current.addLink({
             id: edgeId,
+            value: edgeValue,
             name: type,
             source,
             target,
@@ -64,18 +67,19 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     []
   );
 
-  const handleSearchSelection = useCallback(async (nodeId: string, settings: GraphSettings) => {
+  const handleSearchSelection = useCallback(async (nodeValue: GraphVisNodeValue, settings: GraphSettings) => {
     if (!graphAPI.current) return;
 
     let session;
     try {
       session = driver.session();
 
-      const { name, labels } = await getNameAndLabels(session, nodeId, settings.nameKeys);
+      const { name, labels } = await getNameAndLabels(session, nodeValue, settings.nameKeys);
       graphAPI.current.addNode({
-        id: nodeId,
+        id: getGraphValueId(nodeValue),
+        value: nodeValue,
         name,
-        types: labels,
+        labels,
       });
     } catch (error) {
       console.error("Error in handleSearchSelection:", error);
@@ -108,8 +112,8 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
   }, []);
 
   const handleRenderSidebarContent = (
-    selectedNodeIds: Set<NodeId>,
-    selectedLinkIds: Set<LinkId>,
+    selectedNodeIds: Set<string>,
+    selectedLinkIds: Set<string>,
     getColorForLabel: (label: string) => string,
     settings: GraphSettings
   ) => {
@@ -137,29 +141,24 @@ export const MQLGraphExplorer = ({ driver, initialGraphData, ...props }: MQLGrap
     async (settings: GraphSettings) => {
       if (!graphAPI.current) return;
 
-      let session: Session | undefined;
-      let updates;
-      const nodeIds = graphAPI.current.graphData.nodes.map((n) => n.id);
-      try {
-        session = driver.session();
-        updates = await Promise.all(
-          nodeIds.map(async (id) => {
-            try {
-              const nodeDescription = await getNameAndLabels(session!, id, settings.nameKeys);
-              if (!nodeDescription) return null;
-              return { id, name: nodeDescription.name, types: nodeDescription.labels };
-            } catch (err) {
-              console.error(`Failed to update node ${id}:`, err);
-              return null;
-            }
-          })
-        );
-      } finally {
-        session?.close();
+      let updates = [];
+      const nodes = graphAPI.current.graphData.nodes;
+      
+      for (const node of nodes) {
+        let session: Session | undefined;
+        try {
+          session = driver.session();
+          const nodeDescription = await getNameAndLabels(session, node.value, settings.nameKeys);
+          updates.push({ id: node.id, name: nodeDescription.name, types: nodeDescription.labels });
+        } catch (err) {
+          console.error(`Failed to update node ${node.id}:`, err);
+        } finally {
+          session?.close();
+        }
       }
 
       for (const u of updates) {
-        if (u) graphAPI.current.updateNode(u);
+        if (u) graphAPI.current.updateNode(u.id, u.name, u.types);
       }
       graphAPI.current.update();
     },
