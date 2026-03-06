@@ -7,8 +7,10 @@ import { ActionIcon, Box, LoadingOverlay, Stack, Tooltip, UnstyledButton, useMan
 import clsx from "clsx";
 import { IconPlayerPlayFilled, IconPlayerStopFilled, type Icon, type IconProps } from "@tabler/icons-react";
 import { useRef, useState, type ForwardRefExoticComponent, type RefAttributes } from "react";
-import { Driver } from "@millenniumdb/driver";
+import type { Driver, Record as MDBRecord, Result, Session } from "@millenniumdb/driver";
 import { editor } from "monaco-editor";
+
+const FLUSH_DELAY_MS = 50;
 
 type ActionButtonProps = {
   icon: ForwardRefExoticComponent<IconProps & RefAttributes<Icon>>;
@@ -45,11 +47,27 @@ const LoadingEditor = () => {
 
 export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const runningRef = useRef(false);
+  const runningRef = useRef<boolean>(false);
+
+  const sessionRef = useRef<Session | null>(null);
+  const resultRef = useRef<Result | null>(null);
+  const intervalRef = useRef<number | null>(null);
+
+  const bufferRef = useRef<MDBRecord[]>([]);
 
   const { colorScheme } = useMantineColorScheme();
 
   const [isRunning, setIsRunning] = useState(false);
+
+  const flush = () => {
+    const buffer = bufferRef.current;
+    if (buffer.length === 0) return;
+
+    // TODO:
+    console.log("Flushing records:", buffer);
+
+    buffer.length = 0;
+  };
 
   const runQuery = async () => {
     if (runningRef.current) return;
@@ -59,18 +77,56 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
     setIsRunning(true);
 
     try {
-      const session = driver.session();
       const query = editorRef.current.getValue();
-      const result = session.run(query);
+      sessionRef.current = driver.session();
+      resultRef.current = sessionRef.current.run(query);
+
+      resultRef.current.subscribe({
+        onVariables: (variables) => {
+          console.log(variables);
+        },
+        onRecord: (record) => {
+          bufferRef.current.push(record);
+        },
+        onSuccess: (summary) => {
+          stopQuery();
+          console.info(summary);
+        },
+        onError: (error) => {
+          stopQuery();
+          console.error(error);
+        },
+      });
+
+      intervalRef.current = setInterval(() => {
+        flush();
+      }, FLUSH_DELAY_MS);
     } catch (e) {
       console.error(e);
-    } finally {
-      runningRef.current = false;
-      setIsRunning(false);
     }
   };
 
   const stopQuery = () => {
+    if (!runningRef.current) return;
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    if (sessionRef.current) {
+      sessionRef.current.close();
+      sessionRef.current = null;
+    }
+
+    if (resultRef.current) {
+      driver.cancel(resultRef.current);
+      resultRef.current = null;
+    }
+
+    flush();
+
+    runningRef.current = false;
     setIsRunning(false);
   };
 
@@ -107,7 +163,9 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
           options={DEFAULT_EDITOR_OPTIONS}
         />
       </Box>
-      <Box className={classes.results}>xdx</Box>
+      <Box className={classes.results}>
+        <
+      </Box>
     </Box>
   );
 };
