@@ -20,6 +20,12 @@ importers:
       '@storybook/theming':
         specifier: ^8.6.14
         version: 8.6.14(storybook@9.1.0(@testing-library/dom@10.4.1)(vite@7.0.6(@types/node@24.1.0)(sugarss@5.0.1(postcss@8.5.6))(terser@5.43.1)(yaml@2.8.0)))
+      ag-grid-community:
+        specifier: ^35.1.0
+        version: 35.1.0
+      ag-grid-react:
+        specifier: ^35.1.0
+        version: 35.1.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       monaco-editor:
         specifier: ^0.55.1
         version: 0.55.1
@@ -152,6 +158,9 @@ importers:
       '@types/css-modules':
         specifier: ^1.0.5
         version: 1.0.5
+      '@types/node':
+        specifier: ^24.1.0
+        version: 24.1.0
       css-loader:
         specifier: ^7.1.2
         version: 7.1.2(webpack@5.101.0(esbuild@0.25.8))
@@ -823,6 +832,18 @@ packages:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  ag-charts-types@13.1.0:
+    resolution: {integrity: sha512-DytRM3CXli+Y013SC1Mr8lQBrhVTACK+11ilDHOhwUM0sRpmGuR51XFGcBKOliW1Vas1AycP31Cm3Pp0jx3hqw==}
+
+  ag-grid-community@35.1.0:
+    resolution: {integrity: sha512-yWFQfRNjv3KUBkHHzFdDOYGjPcDMU0B8Up4qG651diFlGRUGEGVs94SK73niWvk1FDZdpV9oWrwq3f30/qAoVg==}
+
+  ag-grid-react@35.1.0:
+    resolution: {integrity: sha512-n8pJh4RTpos8stzz91nEhTCZZdLy9bjQYAGxIxJ8ocVagnEsAk9T5Vz/VEKUhOGz36il68n7TVbVWSuUA3a+mg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   ajv-formats@2.1.1:
     resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
@@ -2685,6 +2706,19 @@ snapshots:
       acorn: 8.15.0
 
   acorn@8.15.0: {}
+
+  ag-charts-types@13.1.0: {}
+
+  ag-grid-community@35.1.0:
+    dependencies:
+      ag-charts-types: 13.1.0
+
+  ag-grid-react@35.1.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
+    dependencies:
+      ag-grid-community: 35.1.0
+      prop-types: 15.8.1
+      react: 19.1.1
+      react-dom: 19.1.1(react@19.1.1)
 
   ajv-formats@2.1.1(ajv@8.17.1):
     optionalDependencies:

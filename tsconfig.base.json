@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
         /* output */
-        "target": "es2015",
-        "module": "es2015",
+        "target": "es2020",
+        "module": "esnext",
         "moduleResolution": "bundler",
         "declaration": true,
         "declarationMap": true,

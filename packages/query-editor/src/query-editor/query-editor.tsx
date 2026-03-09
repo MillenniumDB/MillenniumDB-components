@@ -9,6 +9,10 @@ import { IconPlayerPlayFilled, IconPlayerStopFilled, type Icon, type IconProps }
 import { useRef, useState, type ForwardRefExoticComponent, type RefAttributes } from "react";
 import type { Driver, Record as MDBRecord, Result, Session } from "@millenniumdb/driver";
 import { editor } from "monaco-editor";
+import { AgGridReact, type CustomCellRendererProps } from "ag-grid-react";
+import { DataTable } from "../data-table/data-table";
+import type { ColDef } from "ag-grid-community";
+import { MDBCellRenderer } from "../data-table/mdb-cell-renderer";
 
 const FLUSH_DELAY_MS = 50;
 
@@ -47,29 +51,44 @@ const LoadingEditor = () => {
 
 export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const gridRef = useRef<AgGridReact | null>(null);
+
   const runningRef = useRef<boolean>(false);
+  const bufferRef = useRef<MDBRecord[]>([]);
 
   const sessionRef = useRef<Session | null>(null);
   const resultRef = useRef<Result | null>(null);
-  const intervalRef = useRef<number | null>(null);
-
-  const bufferRef = useRef<MDBRecord[]>([]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { colorScheme } = useMantineColorScheme();
 
   const [isRunning, setIsRunning] = useState(false);
+  const [columnDefs, setColumnDefs] = useState<ColDef[]>([]);
 
   const flush = () => {
     const buffer = bufferRef.current;
     if (buffer.length === 0) return;
 
-    // TODO:
-    console.log("Flushing records:", buffer);
+    gridRef.current?.api.applyTransactionAsync({
+      add: buffer.map((record) => record.toObject()),
+    });
 
     buffer.length = 0;
   };
 
-  const runQuery = async () => {
+  const updateColumnDefs = (variables: string[]) => {
+    setColumnDefs(
+      variables.map((varName, idx) => ({
+        colId: idx.toString(),
+        cellRenderer: MDBCellRenderer,
+        field: varName,
+        headerName: varName,
+        cellDataType: false,
+      })),
+    );
+  };
+
+  const runQuery = () => {
     if (runningRef.current) return;
     if (!editorRef.current) return;
 
@@ -83,7 +102,7 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
 
       resultRef.current.subscribe({
         onVariables: (variables) => {
-          console.log(variables);
+          updateColumnDefs(variables);
         },
         onRecord: (record) => {
           bufferRef.current.push(record);
@@ -114,14 +133,14 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
       intervalRef.current = null;
     }
 
-    if (sessionRef.current) {
-      sessionRef.current.close();
-      sessionRef.current = null;
-    }
-
     if (resultRef.current) {
       driver.cancel(resultRef.current);
       resultRef.current = null;
+    }
+
+    if (sessionRef.current) {
+      sessionRef.current.close();
+      sessionRef.current = null;
     }
 
     flush();
@@ -164,7 +183,7 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
         />
       </Box>
       <Box className={classes.results}>
-        <
+        <DataTable ref={gridRef} columnDefs={columnDefs} showIndex />
       </Box>
     </Box>
   );
