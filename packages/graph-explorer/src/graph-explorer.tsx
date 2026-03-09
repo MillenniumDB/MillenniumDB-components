@@ -45,7 +45,7 @@ export type GraphExplorerProps = {
     node: NodeObject<GraphVisNode>,
     event: MouseEvent,
     outgoing: boolean,
-    settings: GraphSettings
+    settings: GraphSettings,
   ) => void;
   fetchNodes?: (query: string, settings: GraphSettings) => Promise<FetchNodesItem[]>;
   abortFetchNodes?: () => Promise<void>;
@@ -53,14 +53,14 @@ export type GraphExplorerProps = {
   renderSettingsContent?: (
     settings: GraphSettings,
     onSave: (newSettings: GraphSettings) => void,
-    close: () => void
+    close: () => void,
   ) => ReactNode;
   onSettingsChange?: (settings: GraphSettings) => void;
   renderSideBarContent?: (
     selectedNodeIds: Set<string>,
     selectedLinkIds: Set<string>,
     getColorForLabel: (label: string) => string,
-    settings: GraphSettings
+    settings: GraphSettings,
   ) => ReactNode;
 };
 
@@ -85,7 +85,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
       onSettingsChange,
       renderSideBarContent,
     },
-    ref
+    ref,
   ) => {
     const graphAPI = useGraphAPI();
     // Expose the graphAPI methods via ref
@@ -134,7 +134,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         }
         return labelColorMap.current.get(label)!;
       },
-      [computedGraphColors]
+      [computedGraphColors],
     );
 
     // Updates on graph settings changes
@@ -207,7 +207,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
         // Draw the border
         let borderWidth: number | null = null;
-        let borderColor = '';
+        let borderColor = "";
 
         if (isHovered) {
           borderWidth = 4 / globalScale;
@@ -263,24 +263,21 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
         ctx.restore();
       },
-      [hoveredNodeId, hoveredLinkId, selectedNodeIds, rectangularSelection.nodeIds, computedGraphColors]
+      [hoveredNodeId, hoveredLinkId, selectedNodeIds, rectangularSelection.nodeIds, computedGraphColors],
     );
 
     // Node label on hover
-    const nodeLabel = useCallback(
-      (node: NodeObject<GraphVisNode>) => {
-        const { value, name } = node;
-        const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const safeValue = formatGraphValue(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        return `
+    const nodeLabel = useCallback((node: NodeObject<GraphVisNode>) => {
+      const { value, name } = node;
+      const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const safeValue = formatGraphValue(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return `
           <div>
             <strong>${safeName}</strong><br/>
             ${safeName !== safeValue ? `<span>${safeValue}</span>` : ""}
           </div>
         `;
-      },
-      []
-    );
+    }, []);
 
     // map LinkIds to their corresponding curvature
     const curvatureMap = useMemo<Map<string, number>>(() => {
@@ -329,7 +326,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         const { id } = link;
         return curvatureMap.get(id) ?? 0;
       },
-      [curvatureMap]
+      [curvatureMap],
     );
 
     // Link width/thickness
@@ -338,7 +335,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         const { id } = link;
         return id === hoveredLinkId ? 2 : 1;
       },
-      [hoveredLinkId]
+      [hoveredLinkId],
     );
 
     // Link color
@@ -359,7 +356,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
         return isDimmed ? computedGraphColors.link.fill.defaultDimmed : computedGraphColors.link.fill.default;
       },
-      [selectedLinkIds, hoveredLinkId, hoveredNodeId]
+      [selectedLinkIds, hoveredLinkId, hoveredNodeId],
     );
 
     // Render links
@@ -466,56 +463,59 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
 
         ctx.restore();
       },
-      [curvatureMap, computedGraphColors, hoveredNodeId, hoveredLinkId]
+      [curvatureMap, computedGraphColors, hoveredNodeId, hoveredLinkId],
     );
 
     // Link label on hover
-    const linkLabel = useCallback(
-      (link: LinkObject<GraphVisEdge>) => {
-        const { name, value } = link;
-        const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const safeValue = formatGraphValue(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        return `
+    const linkLabel = useCallback((link: LinkObject<GraphVisEdge>) => {
+      const { name, value } = link;
+      const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const safeValue = formatGraphValue(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return `
           <div>
             <strong>${safeName}</strong><br/>
             ${safeName !== safeValue ? `<span>${safeValue}</span>` : ""}
           </div>
         `;
-      },
-      []
-    );
+    }, []);
 
     // Node hover interaction
-    const handleNodeHover = useCallback((node: NodeObject<GraphVisNode> | null) => {
-      if (node) {
-        setHoveredNodeId(node.id);
-        node.isHighlighted = true;
-        const neighborNodesAndLinks = graphAPI.getNeighborNodesAndLinks(node.id);
-        neighborNodesAndLinks.nodes.forEach((n) => (n.isHighlighted = true));
-        neighborNodesAndLinks.links.forEach((l) => (l.isHighlighted = true));
-      } else {
-        setHoveredNodeId(null);
-        graphAPI.graphData.nodes.forEach((n) => (n.isHighlighted = false));
-        graphAPI.graphData.links.forEach((l) => (l.isHighlighted = false));
-      }
-    }, [graphAPI]);
+    const handleNodeHover = useCallback(
+      (node: NodeObject<GraphVisNode> | null) => {
+        if (node) {
+          setHoveredNodeId(node.id);
+          node.isHighlighted = true;
+          const neighborNodesAndLinks = graphAPI.getNeighborNodesAndLinks(node.id);
+          neighborNodesAndLinks.nodes.forEach((n) => (n.isHighlighted = true));
+          neighborNodesAndLinks.links.forEach((l) => (l.isHighlighted = true));
+        } else {
+          setHoveredNodeId(null);
+          graphAPI.graphData.nodes.forEach((n) => (n.isHighlighted = false));
+          graphAPI.graphData.links.forEach((l) => (l.isHighlighted = false));
+        }
+      },
+      [graphAPI],
+    );
 
-    const handleLinkHover = useCallback((link: LinkObject<GraphVisNode, GraphVisNode> | null) => {
-      if (link) {
-        setHoveredLinkId(link.id);
-        link.isHighlighted = true;
-        if (link.source) {
-          (link.source as NodeObject<GraphVisNode>).isHighlighted = true;
+    const handleLinkHover = useCallback(
+      (link: LinkObject<GraphVisNode, GraphVisNode> | null) => {
+        if (link) {
+          setHoveredLinkId(link.id);
+          link.isHighlighted = true;
+          if (link.source) {
+            (link.source as NodeObject<GraphVisNode>).isHighlighted = true;
+          }
+          if (link.target) {
+            (link.target as NodeObject<GraphVisNode>).isHighlighted = true;
+          }
+        } else {
+          setHoveredLinkId(null);
+          graphAPI.graphData.nodes.forEach((n) => (n.isHighlighted = false));
+          graphAPI.graphData.links.forEach((l) => (l.isHighlighted = false));
         }
-        if (link.target) {
-          (link.target as NodeObject<GraphVisNode>).isHighlighted = true;
-        }
-      } else {
-        setHoveredLinkId(null);
-        graphAPI.graphData.nodes.forEach((n) => (n.isHighlighted = false));
-        graphAPI.graphData.links.forEach((l) => (l.isHighlighted = false));
-      }
-    }, [graphAPI]);
+      },
+      [graphAPI],
+    );
 
     const handleNodeClick = useCallback(
       (node: NodeObject<GraphVisNode>, event: MouseEvent) => {
@@ -557,7 +557,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           }
         }
       },
-      [activeToolId]
+      [activeToolId],
     );
 
     const handleLinkClick = useCallback(
@@ -594,7 +594,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           }
         }
       },
-      [activeToolId]
+      [activeToolId],
     );
 
     const handleBackgroundClick = useCallback(() => {
@@ -631,7 +631,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           }
         }
       },
-      [graphAPI.getNode, selectedNodeIds]
+      [graphAPI.getNode, selectedNodeIds],
     );
 
     const handleNodeDragEnd = useCallback(
@@ -641,7 +641,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         node.fx = node.x;
         node.fy = node.y;
       },
-      [selectedNodeIds]
+      [selectedNodeIds],
     );
 
     const handleSelectionStart: OnSelectionStart = useCallback(
@@ -657,7 +657,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           nodeIds: new Set(),
         });
       },
-      []
+      [],
     );
 
     const handleSelectionMove: OnSelectionMove = useCallback(
@@ -685,13 +685,13 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           return { ...prev, nodeIds: nextNodeIds };
         });
       },
-      [selectedNodeIds, graphAPI.graphData.nodes]
+      [selectedNodeIds, graphAPI.graphData.nodes],
     );
 
     const handleSelectionEnd: OnSelectionEnd = useCallback(() => {
       setRectangularSelection((prevRectangularSelection) => {
         setSelectedNodeIds(
-          (prevSelectedNodeIds) => new Set([...prevSelectedNodeIds, ...prevRectangularSelection.nodeIds])
+          (prevSelectedNodeIds) => new Set([...prevSelectedNodeIds, ...prevRectangularSelection.nodeIds]),
         );
         const next = { ...prevRectangularSelection, nodeIds: new Set() as Set<string> };
         return next;
@@ -701,12 +701,11 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
     }, []);
 
     // Recompute label bounding boxes and visibility
-    const boxesOverlap = useCallback((a: NodeLabelBox, b: NodeLabelBox): boolean =>
-      a.x < b.x + b.width &&
-      a.x + a.width > b.x &&
-      a.y < b.y + b.height &&
-      a.y + a.height > b.y
-    , []);
+    const boxesOverlap = useCallback(
+      (a: NodeLabelBox, b: NodeLabelBox): boolean =>
+        a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y,
+      [],
+    );
 
     const updateLabelVisibility = useCallback(
       (nodesAndLinks: (NodeObject<GraphVisNode> | LinkObject<GraphVisEdge>)[]) => {
@@ -724,7 +723,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           }
         }
       },
-      []
+      [],
     );
 
     const handleRecomputeLabelsVisibility = useCallback(() => {
@@ -819,11 +818,7 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
           settings={settings}
         />
 
-        <Settings
-          initialSettings={settings}
-          onSave={setSettings}
-          renderContent={renderSettingsContent}
-        />
+        <Settings initialSettings={settings} onSave={setSettings} renderContent={renderSettingsContent} />
 
         {activeToolId === "rectangular-selection" && (
           <RectangularSelection
@@ -842,5 +837,5 @@ export const GraphExplorer = forwardRef<GraphAPI, GraphExplorerProps>(
         />
       </Box>
     );
-  }
+  },
 );

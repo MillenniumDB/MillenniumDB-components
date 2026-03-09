@@ -1,18 +1,21 @@
 import classes from "./query-editor.module.css";
 
-import ReactMonacoEditor, { type OnChange, type OnMount } from "@monaco-editor/react";
-import { DEFAULT_EDITOR_OPTIONS } from "./editor-options";
+import { type OnMount } from "@monaco-editor/react";
 import type { CSSProperties } from "react";
-import { ActionIcon, Box, LoadingOverlay, Stack, Tooltip, UnstyledButton, useMantineColorScheme } from "@mantine/core";
+import { ActionIcon, Box, LoadingOverlay, Stack, Tooltip, useMantineColorScheme } from "@mantine/core";
 import clsx from "clsx";
 import { IconPlayerPlayFilled, IconPlayerStopFilled, type Icon, type IconProps } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 import { useRef, useState, type ForwardRefExoticComponent, type RefAttributes } from "react";
 import type { Driver, Record as MDBRecord, Result, Session } from "@millenniumdb/driver";
 import { editor } from "monaco-editor";
-import { AgGridReact, type CustomCellRendererProps } from "ag-grid-react";
-import { DataTable } from "../data-table/data-table";
+import { AgGridReact } from "ag-grid-react";
 import type { ColDef } from "ag-grid-community";
 import { MDBCellRenderer } from "../data-table/mdb-cell-renderer";
+import { Split } from "@gfazioli/mantine-split-pane";
+import ReactMonacoEditor from "@monaco-editor/react";
+import { DEFAULT_EDITOR_OPTIONS } from "./editor-options";
+import { DataTable } from "../data-table/data-table";
 
 const FLUSH_DELAY_MS = 50;
 
@@ -34,6 +37,7 @@ const ActionButton = ({ icon: Icon, label, color, onClick }: ActionButtonProps) 
 export type QueryEditorProps = {
   style?: CSSProperties;
   className?: string;
+  orientation?: "horizontal" | "vertical";
   driver: Driver;
 };
 
@@ -49,7 +53,7 @@ const LoadingEditor = () => {
   );
 };
 
-export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps) => {
+export const QueryEditor = ({ style, className = "", orientation = "horizontal", driver }: QueryEditorProps) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const gridRef = useRef<AgGridReact | null>(null);
 
@@ -69,11 +73,11 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
     const buffer = bufferRef.current;
     if (buffer.length === 0) return;
 
+    bufferRef.current = [];
+
     gridRef.current?.api.applyTransactionAsync({
       add: buffer.map((record) => record.toObject()),
     });
-
-    buffer.length = 0;
   };
 
   const updateColumnDefs = (variables: string[]) => {
@@ -89,6 +93,8 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
   };
 
   const runQuery = () => {
+    gridRef.current?.api?.setGridOption("rowData", []);
+
     if (runningRef.current) return;
     if (!editorRef.current) return;
 
@@ -110,10 +116,33 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
         onSuccess: (summary) => {
           stopQuery();
           console.info(summary);
+          const { executionDurationMs, resultCount, update } = summary;
+          if (update) {
+            notifications.show({
+              color: "green",
+              title: "Update Finished",
+              message: `Execution took ${executionDurationMs.toFixed(3)} ms`,
+              withCloseButton: true,
+              withBorder: true,
+            });
+          } else {
+            notifications.show({
+              color: "green",
+              title: "Query Finished",
+              message: `Found ${resultCount} result(s) in ${executionDurationMs.toFixed(3)} ms`,
+              withCloseButton: true,
+              withBorder: true,
+            });
+          }
         },
         onError: (error) => {
           stopQuery();
           console.error(error);
+          notifications.show({
+            title: "Error",
+            color: "red",
+            message: error.toString(),
+          });
         },
       });
 
@@ -125,7 +154,7 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
     }
   };
 
-  const stopQuery = () => {
+  const stopQuery = async () => {
     if (!runningRef.current) return;
 
     if (intervalRef.current) {
@@ -134,13 +163,17 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
     }
 
     if (resultRef.current) {
-      driver.cancel(resultRef.current);
-      resultRef.current = null;
+      try {
+        await driver.cancel(resultRef.current);
+        resultRef.current = null;
+      } catch (e) {}
     }
 
     if (sessionRef.current) {
-      sessionRef.current.close();
-      sessionRef.current = null;
+      try {
+        await sessionRef.current.close();
+        sessionRef.current = null;
+      } catch (e) {}
     }
 
     flush();
@@ -174,16 +207,25 @@ export const QueryEditor = ({ style, className = "", driver }: QueryEditorProps)
             {actionsRender}
           </Stack>
         </Box>
-        <ReactMonacoEditor
-          onMount={handleOnMount}
-          onChange={handleOnChange}
-          theme={colorScheme === "dark" ? "vs-dark" : "light"}
-          loading={<LoadingEditor />}
-          options={DEFAULT_EDITOR_OPTIONS}
-        />
-      </Box>
-      <Box className={classes.results}>
-        <DataTable ref={gridRef} columnDefs={columnDefs} showIndex />
+        <Split className={classes.split} orientation={orientation} autoResizers>
+          <Split.Pane minHeight="4em" minWidth="4em" initialHeight="50%" initialWidth="50%">
+            <Box h="100%" w="100%">
+              <ReactMonacoEditor
+                onMount={handleOnMount}
+                onChange={handleOnChange}
+                theme={colorScheme === "dark" ? "vs-dark" : "light"}
+                loading={<LoadingEditor />}
+                options={DEFAULT_EDITOR_OPTIONS}
+              />
+            </Box>
+          </Split.Pane>
+
+          <Split.Pane minHeight="2em" minWidth="2em" initialHeight="50%" initialWidth="50%">
+            <Box h="100%" w="100%">
+              <DataTable ref={gridRef} columnDefs={columnDefs} showIndex />
+            </Box>
+          </Split.Pane>
+        </Split>
       </Box>
     </Box>
   );

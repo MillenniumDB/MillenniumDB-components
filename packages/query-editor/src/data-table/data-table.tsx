@@ -11,6 +11,7 @@ import {
   ColumnAutoSizeModule,
   CsvExportModule,
   ModuleRegistry,
+  PaginationModule,
   RowApiModule,
   themeQuartz,
   ValidationModule,
@@ -29,6 +30,7 @@ let modules = [
   ClientSideRowModelModule,
   ColumnAutoSizeModule,
   RowApiModule,
+  PaginationModule,
 ];
 
 if (process.env.NODE_ENV === "development") {
@@ -78,7 +80,7 @@ export const DataTable = forwardRef<AgGridReact, DataTableProps>(({ columnDefs, 
       <AgGridReact
         ref={gridRef}
         columnDefs={computedColumnDefs}
-        rowData={[]}
+        loading={false}
         gridOptions={{
           defaultColDef: {
             flex: 1,
@@ -91,6 +93,9 @@ export const DataTable = forwardRef<AgGridReact, DataTableProps>(({ columnDefs, 
         theme={themeQuartz.withParams(themeParams)}
         suppressDragLeaveHidesColumns
         suppressFieldDotNotation // prevents issues with columns with dot
+        enableCellTextSelection
+        ensureDomOrder
+        pagination
       />
     </Box>
   );
