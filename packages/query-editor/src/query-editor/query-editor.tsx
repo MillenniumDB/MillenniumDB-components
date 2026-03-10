@@ -2,58 +2,59 @@ import classes from "./query-editor.module.css";
 
 import { type OnMount } from "@monaco-editor/react";
 import type { CSSProperties } from "react";
-import { ActionIcon, Box, LoadingOverlay, Stack, Tooltip, useMantineColorScheme } from "@mantine/core";
 import clsx from "clsx";
-import { IconPlayerPlayFilled, IconPlayerStopFilled, type Icon, type IconProps } from "@tabler/icons-react";
-import { notifications } from "@mantine/notifications";
-import { useRef, useState, type ForwardRefExoticComponent, type RefAttributes } from "react";
+import { useRef, useState } from "react";
 import type { Driver, Record as MDBRecord, Result, Session } from "@millenniumdb/driver";
 import { editor } from "monaco-editor";
 import { AgGridReact } from "ag-grid-react";
 import type { ColDef } from "ag-grid-community";
 import { MDBCellRenderer } from "../data-table/mdb-cell-renderer";
-import { Split } from "@gfazioli/mantine-split-pane";
 import ReactMonacoEditor from "@monaco-editor/react";
 import { DEFAULT_EDITOR_OPTIONS } from "./editor-options";
 import { DataTable } from "../data-table/data-table";
+import { TabPanel, type LogEntry } from "./tab-panel";
+import { StopIcon } from "../icons/stop-icon";
+import { PlayIcon } from "../icons/play-icon";
 
 const FLUSH_DELAY_MS = 50;
 
 type ActionButtonProps = {
-  icon: ForwardRefExoticComponent<IconProps & RefAttributes<Icon>>;
-  label: string;
-  color: string;
+  isRunning: boolean;
   onClick: () => void;
 };
 
-const ActionButton = ({ icon: Icon, label, color, onClick }: ActionButtonProps) => (
-  <Tooltip label={label} position="right" transitionProps={{ duration: 0 }}>
-    <ActionIcon variant="subtle" aria-label="label" onClick={onClick} color={color}>
-      <Icon style={{ width: "70%", height: "70%" }} stroke={1.5} />
-    </ActionIcon>
-  </Tooltip>
+const ActionButton = ({ isRunning, onClick }: ActionButtonProps) => (
+  <button
+    aria-label={isRunning ? "Stop" : "Run"}
+    title={isRunning ? "Stop" : "Run"}
+    onClick={onClick}
+    className={clsx(classes.actionButton, isRunning ? classes.actionButtonStop : classes.actionButtonRun)}
+  >
+    {isRunning ? <StopIcon /> : <PlayIcon />}
+  </button>
 );
+
+export type ColorScheme = "light" | "dark";
 
 export type QueryEditorProps = {
   style?: CSSProperties;
   className?: string;
   orientation?: "horizontal" | "vertical";
+  colorScheme?: ColorScheme;
   driver: Driver;
 };
 
-const LoadingEditor = () => {
-  return (
-    <LoadingOverlay
-      visible
-      loaderProps={{
-        color: "var(--mantine-color-bright)",
-        type: "dots",
-      }}
-    />
-  );
-};
+const LoadingEditor = () => <div className={classes.loadingEditor}>Loading...</div>;
 
-export const QueryEditor = ({ style, className = "", orientation = "horizontal", driver }: QueryEditorProps) => {
+let logIdCounter = 0;
+
+export const QueryEditor = ({
+  style,
+  className = "",
+  orientation = "horizontal",
+  colorScheme = "light",
+  driver,
+}: QueryEditorProps) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const gridRef = useRef<AgGridReact | null>(null);
 
@@ -64,17 +65,18 @@ export const QueryEditor = ({ style, className = "", orientation = "horizontal",
   const resultRef = useRef<Result | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { colorScheme } = useMantineColorScheme();
-
   const [isRunning, setIsRunning] = useState(false);
   const [columnDefs, setColumnDefs] = useState<ColDef[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  const addLog = (entry: Omit<LogEntry, "id" | "timestamp">) => {
+    setLogs((prev) => [...prev, { ...entry, id: logIdCounter++, timestamp: new Date() }]);
+  };
 
   const flush = () => {
     const buffer = bufferRef.current;
     if (buffer.length === 0) return;
-
     bufferRef.current = [];
-
     gridRef.current?.api.applyTransactionAsync({
       add: buffer.map((record) => record.toObject()),
     });
@@ -94,7 +96,6 @@ export const QueryEditor = ({ style, className = "", orientation = "horizontal",
 
   const runQuery = () => {
     gridRef.current?.api?.setGridOption("rowData", []);
-
     if (runningRef.current) return;
     if (!editorRef.current) return;
 
@@ -107,9 +108,7 @@ export const QueryEditor = ({ style, className = "", orientation = "horizontal",
       resultRef.current = sessionRef.current.run(query);
 
       resultRef.current.subscribe({
-        onVariables: (variables) => {
-          updateColumnDefs(variables);
-        },
+        onVariables: (variables) => updateColumnDefs(variables),
         onRecord: (record) => {
           bufferRef.current.push(record);
         },
@@ -117,38 +116,22 @@ export const QueryEditor = ({ style, className = "", orientation = "horizontal",
           stopQuery();
           console.info(summary);
           const { executionDurationMs, resultCount, update } = summary;
-          if (update) {
-            notifications.show({
-              color: "green",
-              title: "Update Finished",
-              message: `Execution took ${executionDurationMs.toFixed(3)} ms`,
-              withCloseButton: true,
-              withBorder: true,
-            });
-          } else {
-            notifications.show({
-              color: "green",
-              title: "Query Finished",
-              message: `Found ${resultCount} result(s) in ${executionDurationMs.toFixed(3)} ms`,
-              withCloseButton: true,
-              withBorder: true,
-            });
-          }
+          addLog({
+            color: "green",
+            title: update ? "Update Success" : "Query Success",
+            message: update
+              ? `Execution took ${executionDurationMs.toFixed(3)} ms`
+              : `Found ${resultCount} result(s) in ${executionDurationMs.toFixed(3)} ms`,
+          });
         },
         onError: (error) => {
           stopQuery();
           console.error(error);
-          notifications.show({
-            title: "Error",
-            color: "red",
-            message: error.toString(),
-          });
+          addLog({ title: "Error", color: "red", message: error.toString() });
         },
       });
 
-      intervalRef.current = setInterval(() => {
-        flush();
-      }, FLUSH_DELAY_MS);
+      intervalRef.current = setInterval(flush, FLUSH_DELAY_MS);
     } catch (e) {
       console.error(e);
     }
@@ -177,7 +160,6 @@ export const QueryEditor = ({ style, className = "", orientation = "horizontal",
     }
 
     flush();
-
     runningRef.current = false;
     setIsRunning(false);
   };
@@ -186,47 +168,39 @@ export const QueryEditor = ({ style, className = "", orientation = "horizontal",
     editorRef.current = _editor;
   };
 
-  const handleOnChange = () => {};
-
-  const actions = [
-    {
-      icon: isRunning ? IconPlayerStopFilled : IconPlayerPlayFilled,
-      label: isRunning ? "Stop" : "Run",
-      color: isRunning ? "red" : "green",
-      onClick: isRunning ? stopQuery : runQuery,
-    },
-  ];
-
-  const actionsRender = actions.map((action) => <ActionButton {...action} key={action.label} />);
+  const isHorizontal = orientation === "horizontal";
 
   return (
-    <Box className={clsx(classes.root, className)} style={style}>
-      <Box className={classes.editor}>
-        <Box className={classes.sidebar}>
-          <Stack justify="center" gap={0}>
-            {actionsRender}
-          </Stack>
-        </Box>
-        <Split className={classes.split} orientation={orientation} autoResizers>
-          <Split.Pane minHeight="4em" minWidth="4em" initialHeight="50%" initialWidth="50%">
-            <Box h="100%" w="100%">
-              <ReactMonacoEditor
-                onMount={handleOnMount}
-                onChange={handleOnChange}
-                theme={colorScheme === "dark" ? "vs-dark" : "light"}
-                loading={<LoadingEditor />}
-                options={DEFAULT_EDITOR_OPTIONS}
-              />
-            </Box>
-          </Split.Pane>
-
-          <Split.Pane minHeight="2em" minWidth="2em" initialHeight="50%" initialWidth="50%">
-            <Box h="100%" w="100%">
-              <DataTable ref={gridRef} columnDefs={columnDefs} showIndex />
-            </Box>
-          </Split.Pane>
-        </Split>
-      </Box>
-    </Box>
+    <div className={clsx(classes.root, className)} style={style}>
+      <div className={clsx(classes.sidebar, colorScheme === "dark" ? classes.sidebarDark : classes.sidebarLight)}>
+        <ActionButton isRunning={isRunning} onClick={isRunning ? stopQuery : runQuery} />
+      </div>
+      <div
+        className={classes.split}
+        style={{
+          display: "flex",
+          flexDirection: isHorizontal ? "column" : "row",
+          flex: 1,
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          <ReactMonacoEditor
+            onMount={handleOnMount}
+            onChange={() => {}}
+            theme={colorScheme === "dark" ? "vs-dark" : "light"}
+            loading={<LoadingEditor />}
+            options={DEFAULT_EDITOR_OPTIONS}
+          />
+        </div>
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          <TabPanel
+            colorScheme={colorScheme}
+            logs={logs}
+            resultsSlot={<DataTable ref={gridRef} columnDefs={columnDefs} colorScheme={colorScheme} showIndex />}
+          />
+        </div>
+      </div>
+    </div>
   );
 };

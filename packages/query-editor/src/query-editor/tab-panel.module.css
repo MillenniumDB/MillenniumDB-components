@@ -1,0 +1,148 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+  font-size: 12px;
+}
+
+/* Light / Dark root */
+.rootLight {
+  background: #ffffff;
+  color: #1a1a1a;
+  border-top: 1px solid #dee2e6;
+}
+
+.rootDark {
+  background: #1a1a1a;
+  color: #f1f3f5;
+  border-top: 1px solid #373a40;
+}
+
+/* Tab bar */
+.tabBar {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid;
+  border-color: inherit;
+}
+
+.rootLight .tabBar {
+  border-color: #dee2e6;
+}
+
+.rootDark .tabBar {
+  border-color: #373a40;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.rootLight .tab { color: #1a1a1a; }
+.rootDark .tab  { color: #f1f3f5; }
+
+.tab:hover { opacity: 0.8; }
+
+.tabActive {
+  opacity: 1;
+}
+
+.tabActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #228be6;
+}
+
+/* Error dot on Log tab */
+.errorDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e03131;
+  flex-shrink: 0;
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.pane {
+  display: none;
+  height: 100%;
+  width: 100%;
+}
+
+.paneVisible {
+  display: block;
+}
+
+/* Log list */
+.logList {
+  height: 100%;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.logEntry {
+  display: grid;
+  grid-template-columns: 80px 140px 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 12px;
+  border-left: 3px solid transparent;
+}
+
+.logEntry:hover {
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.logSuccess { border-left-color: #2f9e44; }
+.logError   { border-left-color: #e03131; }
+
+.logTime {
+  opacity: 0.45;
+  white-space: nowrap;
+}
+
+.logTitle {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.logMessage {
+  opacity: 0.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Empty state */
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.35;
+}
